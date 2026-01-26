@@ -1,11 +1,17 @@
+import CustomButton from "@/components/CustomButton";
+import { colors } from "@/config/colors";
 import {
   Trispace_400Regular,
   Trispace_700Bold,
+  Trispace_800ExtraBold,
   useFonts,
 } from "@expo-google-fonts/trispace";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+// Added ImageBackground to imports
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   Easing,
@@ -21,21 +27,32 @@ import Animated, {
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [fontsLoaded] = useFonts({ Trispace_700Bold, Trispace_400Regular });
-  const stage = useSharedValue(0); // 0 = Splash1, 1 = Splash2, 2 = Splash3
-  const isAuthenticated = true;
+  const [fontsLoaded] = useFonts({
+    Trispace_700Bold,
+    Trispace_400Regular,
+    Trispace_800ExtraBold,
+  });
+
+  const stage = useSharedValue(0);
   const router = useRouter();
+  let isAuthenticated: any;
+
+  useEffect(() => {
+    (async function () {
+      isAuthenticated = await AsyncStorage.getItem("isAuthenticated");
+      // Note: Setting this to "true" manually for testing as per your code
+      isAuthenticated = "true";
+    })();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded) {
-      // Splash1 → Splash2
       stage.value = withDelay(
         100,
         withTiming(
           1,
           { duration: 100, easing: Easing.out(Easing.cubic) },
           () => {
-            // Splash2 → Splash3
             stage.value = withDelay(
               2000,
               withTiming(2, {
@@ -50,7 +67,6 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  // Background color
   const containerStyle = useAnimatedStyle(() => ({
     flex: 1,
     alignItems: "center",
@@ -58,11 +74,10 @@ export default function App() {
     backgroundColor: interpolateColor(
       stage.value,
       [0, 1, 2],
-      ["#1a008a", "#1a008a", "#FFFFFF"],
+      [colors.main, colors.main, "#FFFFFF"],
     ),
   }));
 
-  // Logo animation
   const logoStyle = useAnimatedStyle(() => ({
     opacity:
       stage.value === 0
@@ -72,76 +87,80 @@ export default function App() {
           : 0.3,
     transform: [{ scale: stage.value === 2 ? withTiming(3) : 1 }],
     position: stage.value > 1 ? (withTiming("absolute") as any) : "relative",
-    width: 180,
-    height: 180,
+    width: 220,
+    height: 150,
+    top: stage.value === 2 ? 170 : 0,
+    marginTop: stage.value === 2 ? 0 : 150,
   }));
 
-  // MA3 text animation (only shows in stage 2 / Splash3)
   const ma3Style = useAnimatedStyle(() => ({
     opacity: stage.value === 2 ? withTiming(1) : 0,
-    marginBottom: 8,
+    display: stage.value === 2 ? "flex" : "none",
     textAlign: "center",
     fontFamily: "Trispace_700Bold",
-    fontSize: 36,
-    color: "#1a008a",
+    fontSize: 60,
+    color: colors.main,
   }));
 
-  // Slogan text animation (always below logo)
   const sloganStyle = useAnimatedStyle(() => ({
     opacity: stage.value > 0 ? withTiming(1, { duration: 2000 }) : 0,
-    color: stage.value === 2 ? "#1a008a" : "#FFD700",
+    color: stage.value === 2 ? colors.main : "#FFD700",
     textAlign: "center",
+    marginTop: stage.value === 2 ? 0 : 10,
   }));
 
-  // Buttons animation
   const buttonStyle = useAnimatedStyle(() => ({
     opacity: stage.value === 2 ? withTiming(1) : 0,
     transform: [
       { translateY: stage.value === 2 ? withTiming(0) : withTiming(50) },
     ],
   }));
+
   useAnimatedReaction(
     () => stage.value,
     (currentStage) => {
-      if (currentStage === 2 && isAuthenticated) {
-        runOnJS(router.replace)("/home");
+      if (currentStage === 2 && isAuthenticated === "true") {
+        runOnJS(router.replace)("/(protected)" as any);
       }
     },
   );
 
   if (!fontsLoaded) return null;
+
   return (
     <Animated.View style={[styles.container, containerStyle]}>
-      {/* Background Logo */}
+      {/* Main Content */}
       <Animated.Image
-        source={require("../assets/images/icon.png")}
+        source={require("../assets/images/logo-golden.png")}
         style={logoStyle}
         resizeMode="contain"
       />
 
-      {/* Text */}
       <View style={{ alignItems: "center" }}>
-        {/* MA3 (only appears in Splash3) */}
         <Animated.Text style={ma3Style}>MA3</Animated.Text>
-
-        {/* Slogan (always below logo) */}
         <Animated.Text style={[styles.slogan, sloganStyle]}>
           VETERAN RIDERSHARE{"\n"}PURSUIT FOR PERFECTION
         </Animated.Text>
       </View>
 
-      {/* Buttons */}
       {!isAuthenticated && (
         <Animated.View style={[styles.buttonArea, buttonStyle]}>
-          <TouchableOpacity style={styles.loginBtn}>
-            <Text style={styles.loginText}>Login</Text>
-          </TouchableOpacity>
+          <CustomButton
+            onClick={() => router.replace("/(auth)/login")}
+            type="main"
+            text="Login"
+          />
+          <CustomButton
+            type="outline"
+            text="Create an Account"
+            onClick={() => router.replace("/(auth)/sign-up")}
+          />
 
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Text style={styles.outlineText}>Create an Account</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.outlineBtn}>
+          <TouchableOpacity style={styles.googleBtn}>
+            <Image
+              style={{ width: 24, height: 24 }}
+              source={require("../assets/icons/Google.svg")}
+            />
             <Text style={styles.outlineText}>Continue With Google</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -152,38 +171,25 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center" },
-
   slogan: {
-    fontFamily: "Trispace_400Regular",
+    fontFamily: "Trispace_800ExtraBold",
     fontSize: 16,
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
-
   buttonArea: { width: "85%", alignItems: "center", marginTop: 30 },
-
-  loginBtn: {
-    backgroundColor: "#1a008a",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 15,
-    width: "100%",
-  },
-  loginText: {
-    color: "#FFF",
-    fontSize: 16,
-  },
-
-  outlineBtn: {
+  googleBtn: {
     backgroundColor: "#F8F9FA",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#E5E5E5",
     width: "100%",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
   },
   outlineText: {
     color: "#333",
