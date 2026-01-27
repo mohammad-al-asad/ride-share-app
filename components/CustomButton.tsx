@@ -3,12 +3,12 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
 interface ButtonProps {
-  type: string;
+  type?: string;
   text: string;
   onClick: () => void;
 }
 
-const CustomButton = ({ type, text, onClick }: ButtonProps) => {
+const CustomButton = ({ type="main", text, onClick }: ButtonProps) => {
   return (
     <TouchableOpacity
       onPress={onClick}

@@ -6,17 +6,15 @@ import {
   Trispace_800ExtraBold,
   useFonts,
 } from "@expo-google-fonts/trispace";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useLayoutEffect } from "react";
 // Added ImageBackground to imports
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
   Easing,
   interpolateColor,
-  runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
@@ -37,13 +35,18 @@ export default function App() {
   const router = useRouter();
   let isAuthenticated: any;
 
+  isAuthenticated = "true";
   useEffect(() => {
     (async function () {
-      isAuthenticated = await AsyncStorage.getItem("isAuthenticated");
+      // isAuthenticated = await AsyncStorage.getItem("isAuthenticated");
       // Note: Setting this to "true" manually for testing as per your code
-      isAuthenticated = "true";
     })();
   }, []);
+  useLayoutEffect(() => {
+    setTimeout(() => {
+      if (isAuthenticated === "true") router.replace("/(protected)/(tab)");
+    }, 2000);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -89,13 +92,13 @@ export default function App() {
     position: stage.value > 1 ? (withTiming("absolute") as any) : "relative",
     width: 220,
     height: 150,
-    top: stage.value === 2 ? 170 : 0,
+    top: stage.value === 2 ? withTiming(170) : 0,
     marginTop: stage.value === 2 ? 0 : 150,
   }));
 
   const ma3Style = useAnimatedStyle(() => ({
     opacity: stage.value === 2 ? withTiming(1) : 0,
-    display: stage.value === 2 ? "flex" : "none",
+    display: stage.value === 2 ? withTiming("flex") : "none",
     textAlign: "center",
     fontFamily: "Trispace_700Bold",
     fontSize: 60,
@@ -104,7 +107,7 @@ export default function App() {
 
   const sloganStyle = useAnimatedStyle(() => ({
     opacity: stage.value > 0 ? withTiming(1, { duration: 2000 }) : 0,
-    color: stage.value === 2 ? colors.main : "#FFD700",
+    color: stage.value === 2 ? withTiming(colors.main) : "#FFD700",
     textAlign: "center",
     marginTop: stage.value === 2 ? 0 : 10,
   }));
@@ -120,7 +123,9 @@ export default function App() {
     () => stage.value,
     (currentStage) => {
       if (currentStage === 2 && isAuthenticated === "true") {
-        runOnJS(router.replace)("/(protected)" as any);
+        // runOnJS(() => {
+        //   console.log("gotcha",currentStage,isAuthenticated);
+        // })();
       }
     },
   );
