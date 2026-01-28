@@ -35,13 +35,7 @@ export default function App() {
   const router = useRouter();
   let isAuthenticated: any;
 
-  isAuthenticated = "true";
-  useEffect(() => {
-    (async function () {
-      // isAuthenticated = await AsyncStorage.getItem("isAuthenticated");
-      // Note: Setting this to "true" manually for testing as per your code
-    })();
-  }, []);
+  isAuthenticated = "";
   useLayoutEffect(() => {
     setTimeout(() => {
       if (isAuthenticated === "true") router.replace("/(protected)/(tab)");
@@ -88,12 +82,12 @@ export default function App() {
         : stage.value === 1
           ? withTiming(1)
           : 0.3,
-    transform: [{ scale: stage.value === 2 ? withTiming(3) : 1 }],
+    transform: [{ scale: stage.value < 2 ? 1 : withTiming(3) }],
     position: stage.value > 1 ? (withTiming("absolute") as any) : "relative",
     width: 220,
     height: 150,
     top: stage.value === 2 ? withTiming(170) : 0,
-    marginTop: stage.value === 2 ? 0 : 150,
+    // marginTop: stage.value === 2 ? 0 : 150,
   }));
 
   const ma3Style = useAnimatedStyle(() => ({
@@ -137,7 +131,7 @@ export default function App() {
       {/* Main Content */}
       <Animated.Image
         source={require("../assets/images/logo-golden.png")}
-        style={logoStyle}
+        style={[logoStyle, { marginTop: 0 }]}
         resizeMode="contain"
       />
 

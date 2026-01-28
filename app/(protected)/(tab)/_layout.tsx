@@ -3,7 +3,7 @@ import { colors } from "@/config/colors";
 import { usePathname } from "expo-router";
 import { TabList, Tabs, TabSlot, TabTrigger } from "expo-router/ui";
 import React, { useEffect } from "react";
-import { StyleSheet } from "react-native";
+import { StatusBar, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -36,6 +36,7 @@ export default function RootLayout() {
 
   return (
     <Tabs options={{ initialRouteName: "index" }}>
+      <StatusBar barStyle="dark-content" />
       <TabSlot />
 
       <TabList style={styles.tabBar}>

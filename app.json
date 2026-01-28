@@ -4,7 +4,7 @@
     "slug": "riding-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-golden.svg",
     "scheme": "ridingapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -37,16 +37,21 @@
           "android": {
             "datePicker": {
               "colorAccent": {
-                "light": "#240183"
+                "light": "#240183",
+                "dark": "#A6AFFF"
               },
               "textColorPrimary": {
-                "light": "#A6AFFF"
+                "light": "#1A1A1A",
+                "dark": "#FFFFFF"
               }
             },
             "timePicker": {
-              "background": { "light": "#FF5722", "dark": "#383838" },
+              "background": {
+                "light": "#FFFFFF",
+                "dark": "#1A1A1A"
+              },
               "numbersBackgroundColor": {
-                "light": "#FF5722",
+                "light": "#F1F2F4",
                 "dark": "#383838"
               }
             }

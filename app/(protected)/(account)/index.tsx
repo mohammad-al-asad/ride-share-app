@@ -1,6 +1,5 @@
 import AuthBackground from "@/components/AuthBackground";
 import ConfirmationModal from "@/components/ConfirmationModal";
-import { colors } from "@/config/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -19,10 +18,6 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <AuthBackground />
-      {/* Header taken from your requested code */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Account</Text>
-      </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -54,29 +49,11 @@ export default function ProfileScreen() {
         {/* Settings Group */}
         <Text style={styles.sectionTitle}>Settings</Text>
         <View style={styles.card}>
-          <SettingItem
-            icon="person-outline"
-            label="Personal Info"
-            onPress={() => {
-              router.push("/(protected)/(account)/personal-info");
-            }}
-          />
+          <SettingItem icon="person-outline" label="Personal Info" />
           <View style={styles.divider} />
-          <SettingItem
-            icon="lock-closed-outline"
-            label="Change Password"
-            onPress={() => {
-              router.push("/(auth)/change-password");
-            }}
-          />
+          <SettingItem icon="lock-closed-outline" label="Change Password" />
           <View style={styles.divider} />
-          <SettingItem
-            icon="checkmark-circle-outline"
-            label="Linked account"
-            onPress={() => {
-              router.push("/(protected)/(account)/linked-account");
-            }}
-          />
+          <SettingItem icon="checkmark-circle-outline" label="Linked account" />
         </View>
 
         {/* Ratings Group */}
@@ -86,7 +63,7 @@ export default function ProfileScreen() {
             icon="star-outline"
             label="Feedback"
             onPress={() => {
-              router.push("/(protected)/(account)/feedback");
+              router.push("/(protected)/(tab)/account/feedback");
             }}
           />
         </View>
@@ -94,28 +71,16 @@ export default function ProfileScreen() {
         {/* Support Group */}
         <Text style={styles.sectionTitle}>Support & Policies</Text>
         <View style={styles.card}>
-          <SettingItem
-            icon="headset-outline"
-            label="Customer Support"
-            onPress={() => {
-              router.push("/(protected)/(account)/support");
-            }}
-          />
+          <SettingItem icon="headset-outline" label="Customer Support" />
           <View style={styles.divider} />
           <SettingItem
             icon="document-text-outline"
             label="Terms & Conditions"
-            onPress={() => {
-              router.push("/(protected)/(account)/terms");
-            }}
           />
           <View style={styles.divider} />
           <SettingItem
             icon="shield-checkmark-outline"
             label="Privacy & Policy"
-            onPress={() => {
-              router.push("/(protected)/(account)/privacy");
-            }}
           />
         </View>
 
@@ -167,25 +132,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F9FF",
   },
-  headerContainer: {
-    backgroundColor: colors.white,
-    padding: scale(15),
-    paddingTop: scale(45),
-    marginBottom: scale(20),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 3,
-  },
-  headerTitle: {
-    fontSize: moderateScale(20),
-    fontWeight: "bold",
-    color: "#1A1A1A",
-    textAlign: "center",
-  },
   scrollContent: {
     paddingHorizontal: scale(20),
+    paddingTop: verticalScale(40),
     paddingBottom: verticalScale(120),
   },
   profileHeader: {

@@ -51,7 +51,13 @@ export default function ChooseRoleScreen() {
           <CustomButton
             type="main"
             text="Next"
-            onClick={() => router.replace("/(auth)/set-password")}
+            onClick={() => {
+              if (selectedRole === "customer") {
+                router.replace("/(auth)/set-profile");
+              } else if (selectedRole === "driver") {
+                router.replace("/(driver)");
+              }
+            }}
           />
         </View>
       </View>

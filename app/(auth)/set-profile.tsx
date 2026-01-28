@@ -45,7 +45,7 @@ export default function AddPhotoScreen() {
             type="main"
             text="Get Started"
             onClick={() => {
-              router.replace("/(protected)" as any);
+              router.replace("/(protected)/(tab)");
             }}
           />
         </View>

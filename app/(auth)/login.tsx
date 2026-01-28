@@ -17,7 +17,7 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = () => {
-    console.log("Login pressed");
+    router.replace("/(protected)/(tab)");
   };
 
   const handleGoogleLogin = () => {
