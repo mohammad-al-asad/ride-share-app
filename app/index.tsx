@@ -35,10 +35,10 @@ export default function App() {
   const router = useRouter();
   let isAuthenticated: any;
 
-  isAuthenticated = "";
+  isAuthenticated = "true";
   useLayoutEffect(() => {
     setTimeout(() => {
-      if (isAuthenticated === "true") router.replace("/(protected)/(tab)");
+      if (isAuthenticated === "true") router.replace("/(driver)");
     }, 2000);
   }, [isAuthenticated]);
 
