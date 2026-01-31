@@ -3,8 +3,7 @@ import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -18,59 +17,77 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 export default function VehicleInfoScreen() {
-  const [makes, setMakes] = useState([]);
-  const [models, setModels] = useState([]);
+  const [makes, setMakes] = useState<any[]>([]);
+  const [models, setModels] = useState<any[]>([]);
   const [loadingMakes, setLoadingMakes] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
 
-  const [selectedMake, setSelectedMake] = useState(null);
-  const [selectedModel, setSelectedModel] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
-  const [selectedType, setSelectedType] = useState(null);
-  const [selectedPrice, setSelectedPrice] = useState(null);
+  const [selectedMake, setSelectedMake] = useState<number | null>(null);
+  const [selectedModel, setSelectedModel] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedPrice, setSelectedPrice] = useState<string | null>(null);
+
   const [seats, setSeats] = useState("4");
   const [licensePlate, setLicensePlate] = useState("JBS 0342");
 
-  // 1. Fetch Makes on mount
+  /* ---------------- FETCH MAKES ---------------- */
   useEffect(() => {
-    setLoadingMakes(true);
-    fetch(
-      "https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json",
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        const formattedMakes = data.Results.map((item: any) => ({
+    const fetchMakes = async () => {
+      try {
+        setLoadingMakes(true);
+        const res = await fetch(
+          "https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json",
+        );
+        const data = await res.json();
+        const formatted = data.Results.map((item: any) => ({
           label: item.MakeName,
           value: item.MakeId,
         }));
-        setMakes(formattedMakes);
-      })
-      .finally(() => setLoadingMakes(false));
+        setMakes(formatted);
+      } finally {
+        setLoadingMakes(false);
+      }
+    };
+
+    fetchMakes();
   }, []);
 
-  // 2. Fetch Models when Make changes
+  /* ---------------- FETCH MODELS ---------------- */
   useEffect(() => {
-    if (selectedMake) {
-      setLoadingModels(true);
-      fetch(
-        `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeId/${selectedMake}?format=json`,
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          const formattedModels = data.Results.map((item: any) => ({
-            label: item.Model_Name,
-            value: item.Model_ID,
-          }));
-          setModels(formattedModels);
-        })
-        .finally(() => setLoadingModels(false));
-    }
+    if (!selectedMake) return;
+
+    const fetchModels = async () => {
+      try {
+        setLoadingModels(true);
+        const res = await fetch(
+          `https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMakeId/${selectedMake}?format=json`,
+        );
+        const data = await res.json();
+        const formatted = data.Results.map((item: any) => ({
+          label: item.Model_Name,
+          value: item.Model_ID,
+        }));
+        setModels(formatted);
+      } finally {
+        setLoadingModels(false);
+      }
+    };
+
+    fetchModels();
   }, [selectedMake]);
 
-  const years = Array.from({ length: 27 }, (_, i) => ({
-    label: (2026 - i).toString(),
-    value: (2026 - i).toString(),
-  }));
+  /* ---------------- STATIC DATA ---------------- */
+
+  const years = useMemo(
+    () =>
+      Array.from({ length: 27 }, (_, i) => {
+        const year = (2026 - i).toString();
+        return { label: year, value: year };
+      }),
+    [],
+  );
 
   const vehicleTypes = [
     { label: "Car", value: "car" },
@@ -78,28 +95,73 @@ export default function VehicleInfoScreen() {
     { label: "Van", value: "van" },
   ];
 
-  const vehiclePriceRanges = {
+  // ✅ Added Normal
+  const vehicleSizes = [
+    { label: "Normal", value: "normal" },
+    { label: "Compact/Midsize", value: "compact" },
+    { label: "Full Size", value: "full" },
+  ];
+
+  const vehiclePriceRanges: Record<string, any[]> = {
     car: [
       { label: "24k-32k", value: "regular" },
       { label: "35k-50k+", value: "premium" },
     ],
-    suv_compact: [
+
+    // SUV
+    suvnormal: [
+      { label: "28k-38k", value: "regular" },
+      { label: "40k-60k+", value: "premium" },
+    ],
+    suvcompact: [
       { label: "30k-45k", value: "regular" },
       { label: "50k-75k+", value: "premium" },
     ],
-    suv_full: [
+    suvfull: [
       { label: "45k-60k", value: "regular" },
       { label: "70k-100k+", value: "premium" },
     ],
-    van_compact: [
+
+    // VAN
+    vannormal: [
+      { label: "30k-40k", value: "regular" },
+      { label: "45k-65k+", value: "premium" },
+    ],
+    vancompact: [
       { label: "32k-45k", value: "regular" },
       { label: "50k-70k+", value: "premium" },
     ],
-    van_full: [
+    vanfull: [
       { label: "40k-55k", value: "regular" },
       { label: "60k-85k+", value: "premium" },
     ],
   };
+
+  /* ---------------- DERIVED PRICE OPTIONS ---------------- */
+
+  const priceOptions = useMemo(() => {
+    if (!selectedType) return [];
+
+    if (selectedType === "car") {
+      return vehiclePriceRanges.car;
+    }
+
+    if (!selectedSize) return [];
+
+    const key = `${selectedType}${selectedSize}`;
+    return vehiclePriceRanges[key] ?? [];
+  }, [selectedType, selectedSize]);
+
+  const priceDisabled =
+    !selectedType || (selectedType !== "car" && !selectedSize);
+
+  const pricePlaceholder = useMemo(() => {
+    if (!selectedType) return "Select Type first";
+    if (selectedType !== "car" && !selectedSize) return "Select Size first";
+    return "Select Price Range";
+  }, [selectedType, selectedSize]);
+
+  /* ---------------- UI ---------------- */
 
   return (
     <SafeAreaView style={styles.container}>
@@ -118,24 +180,21 @@ export default function VehicleInfoScreen() {
 
         <Text style={styles.headerTitle}>Enter your vehicle information</Text>
 
-        {/* Brand Dropdown */}
+        {/* Brand */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Brand</Text>
           <Dropdown
             style={styles.dropdown}
-            selectedTextStyle={styles.selectedTextStyle} // Fixes text alignment
-            placeholderStyle={styles.placeholderStyle}
             data={makes}
             labelField="label"
             valueField="value"
-            placeholder={loadingMakes ? "Loading..." : "Select Brand"}
             value={selectedMake}
-            // Displays spinner inside the dropdown
+            placeholder={loadingMakes ? "Loading..." : "Select Brand"}
             renderRightIcon={() =>
               loadingMakes ? (
                 <ActivityIndicator size="small" color={colors.main} />
               ) : (
-                <Ionicons name="chevron-down" size={20} color="#1A1A1A" />
+                <Ionicons name="chevron-down" size={20} />
               )
             }
             onChange={(item) => {
@@ -145,16 +204,16 @@ export default function VehicleInfoScreen() {
           />
         </View>
 
-        {/* Model Dropdown */}
+        {/* Model */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Model</Text>
           <Dropdown
             style={styles.dropdown}
-            selectedTextStyle={styles.selectedTextStyle}
-            placeholderStyle={styles.placeholderStyle}
             data={models}
             labelField="label"
             valueField="value"
+            value={selectedModel}
+            disable={!selectedMake || loadingModels}
             placeholder={
               loadingModels
                 ? "Loading models..."
@@ -162,71 +221,84 @@ export default function VehicleInfoScreen() {
                   ? "Select Model"
                   : "Select Brand first"
             }
-            value={selectedModel}
             renderRightIcon={() =>
-              loadingMakes ? (
+              loadingModels ? (
                 <ActivityIndicator size="small" color={colors.main} />
               ) : (
-                <Ionicons name="chevron-down" size={20} color="#1A1A1A" />
+                <Ionicons name="chevron-down" size={20} />
               )
             }
             onChange={(item) => setSelectedModel(item.value)}
-            disable={!selectedMake || loadingModels}
           />
         </View>
 
-        {/* Year Dropdown */}
+        {/* Year */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Year</Text>
           <Dropdown
             style={styles.dropdown}
-            selectedTextStyle={styles.selectedTextStyle}
-            placeholderStyle={styles.placeholderStyle}
             data={years}
             labelField="label"
             valueField="value"
-            placeholder="Select Year"
             value={selectedYear}
+            placeholder="Select Year"
             onChange={(item) => setSelectedYear(item.value)}
           />
         </View>
 
-        {/* Type Dropdown */}
+        {/* Type */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Type</Text>
           <Dropdown
             style={styles.dropdown}
-            selectedTextStyle={styles.selectedTextStyle}
-            placeholderStyle={styles.placeholderStyle}
             data={vehicleTypes}
             labelField="label"
             valueField="value"
-            placeholder="Select Type"
             value={selectedType}
-            onChange={(item) => setSelectedType(item.value)}
+            placeholder="Select Type"
+            onChange={(item) => {
+              setSelectedType(item.value);
+              setSelectedSize(null);
+              setSelectedPrice(null);
+            }}
           />
         </View>
 
-        {/* Price Dropdown */}
+        {/* Size (Not for car) */}
+        {selectedType && selectedType !== "car" && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Size</Text>
+            <Dropdown
+              style={styles.dropdown}
+              data={vehicleSizes}
+              labelField="label"
+              valueField="value"
+              value={selectedSize}
+              placeholder="Select Size"
+              onChange={(item) => {
+                setSelectedSize(item.value);
+                setSelectedPrice(null);
+              }}
+            />
+          </View>
+        )}
+
+        {/* Price */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Price Range</Text>
           <Dropdown
             style={styles.dropdown}
-            selectedTextStyle={styles.selectedTextStyle}
-            placeholderStyle={styles.placeholderStyle}
-            data={vehiclePriceRanges[selectedType!]}
+            data={priceOptions}
             labelField="label"
             valueField="value"
-            disable={!selectedType}
-            placeholder={
-              selectedType ? "Select Price Range" : "Select Type first"
-            }
             value={selectedPrice}
+            disable={priceDisabled}
+            placeholder={pricePlaceholder}
             onChange={(item) => setSelectedPrice(item.value)}
           />
         </View>
 
-        {/* Text Inputs */}
+        {/* Seats */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Seats</Text>
           <View style={styles.textInputWrapper}>
@@ -239,8 +311,9 @@ export default function VehicleInfoScreen() {
           </View>
         </View>
 
+        {/* License */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>License plate</Text>
+          <Text style={styles.inputLabel}>License Plate</Text>
           <View style={styles.textInputWrapper}>
             <TextInput
               style={styles.input}
@@ -251,13 +324,7 @@ export default function VehicleInfoScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <CustomButton
-            text="Next"
-            onClick={() => {
-              router.push("/(driver)/check-list");
-            }}
-            type="main"
-          />
+          <CustomButton text="Next" onClick={() => {}} type="main" />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -271,7 +338,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(40),
   },
   imageContainer: {
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F4F4F6",
     borderRadius: scale(20),
     height: verticalScale(160),
     justifyContent: "center",
@@ -294,7 +361,7 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     height: verticalScale(50),
-    borderColor: "#E5E7EB",
+    borderColor: "#DAD6FF",
     borderWidth: 1,
     borderRadius: scale(12),
     paddingHorizontal: scale(15),
@@ -304,26 +371,18 @@ const styles = StyleSheet.create({
   selectedTextStyle: {
     fontSize: moderateScale(14),
     color: "#1A1A1A",
-    lineHeight: moderateScale(18), // Centers text vertically in the box
+    lineHeight: moderateScale(18),
   },
-  placeholderStyle: {
-    fontSize: moderateScale(14),
-    color: "#9CA3AF",
-  },
+  placeholderStyle: { fontSize: moderateScale(14), color: "#9CA3AF" },
   textInputWrapper: {
     backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#DAD6FF",
     borderRadius: scale(12),
     paddingHorizontal: scale(15),
     height: verticalScale(50),
     justifyContent: "center",
   },
-  input: {
-    fontSize: moderateScale(14),
-    color: "#1A1A1A",
-  },
-  buttonContainer: {
-    marginTop: verticalScale(10),
-  },
+  input: { fontSize: moderateScale(14), color: "#1A1A1A" },
+  buttonContainer: { marginTop: verticalScale(10) },
 });

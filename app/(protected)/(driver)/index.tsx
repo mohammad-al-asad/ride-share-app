@@ -4,7 +4,7 @@ import { colors } from "@/config/colors";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Dimensions, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -38,7 +38,7 @@ export default function WelcomeScreen({ navigation }: any) {
         {/* Action Button */}
         <CustomButton
           text="Next"
-          onClick={() => router.push("/(driver)/select-car")}
+          onClick={() => router.push("/(protected)/(driver)/(check-list)")}
           type="main"
         />
       </View>

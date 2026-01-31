@@ -33,21 +33,21 @@ const CHECKLIST_ITEMS = [
     title: "Vehicle Registration",
     status: "Needs attention",
     statusColor: "#EF4444",
-    route: "/vehicle-registration",
+    route: "/registration",
   },
   {
     id: "4",
     title: "Vehicle Insurance Paper",
     status: "In review",
     statusColor: "#9CA3AF",
-    route: "/vehicle-insurance",
+    route: "/insurance",
   },
   {
     id: "5",
     title: "Payment Information",
     status: "Completed",
     statusColor: "#10B981",
-    route: "/payment-info",
+    route: "/payment",
   },
   {
     id: "6",
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: scale(20),
-    paddingTop: verticalScale(20),
+    paddingTop: verticalScale(10),
     paddingBottom: verticalScale(40),
   },
   header: {
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: verticalScale(16),
+    paddingVertical: verticalScale(14),
     paddingHorizontal: scale(16),
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     backgroundColor: "#A6AFFF", // Light purple button
-    height: verticalScale(50),
+    height: moderateScale(50),
     borderRadius: scale(12),
     flexDirection: "row",
     justifyContent: "center",

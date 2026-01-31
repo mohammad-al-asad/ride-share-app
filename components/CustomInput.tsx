@@ -1,28 +1,38 @@
-import React, { useState } from "react";
-import { View, TextInput, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import { StyleSheet, TextInput, TextInputProps, TouchableOpacity, View } from "react-native";
 
-interface CustomInputProps {
-  icon: keyof typeof Ionicons.glyphMap;
+interface CustomInputProps extends TextInputProps {
+  icon?: keyof typeof Ionicons.glyphMap;
   placeholder: string;
   isPassword?: boolean;
 }
 
-export const CustomInput = ({ icon, placeholder, isPassword }: CustomInputProps) => {
+export const CustomInput = ({
+  icon,
+  isPassword,
+  ...props
+}: CustomInputProps) => {
   const [isSecure, setIsSecure] = useState(isPassword);
 
   return (
     <View style={styles.inputContainer}>
-      <Ionicons name={icon} size={20} color="#000" style={styles.icon} />
+      {icon && (
+        <Ionicons name={icon} size={20} color="#000" style={styles.icon} />
+      )}
       <TextInput
-        placeholder={placeholder}
         style={styles.input}
         secureTextEntry={isSecure}
         placeholderTextColor="#999"
+        {...props}
       />
       {isPassword && (
         <TouchableOpacity onPress={() => setIsSecure(!isSecure)}>
-          <Ionicons name={isSecure ? "eye-off-outline" : "eye-outline"} size={20} color="#000" />
+          <Ionicons
+            name={isSecure ? "eye-off-outline" : "eye-outline"}
+            size={20}
+            color="#000"
+          />
         </TouchableOpacity>
       )}
     </View>

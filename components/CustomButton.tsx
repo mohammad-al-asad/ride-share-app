@@ -6,22 +6,36 @@ interface ButtonProps {
   type?: string;
   text: string;
   onClick: () => void;
+  style?: any;
+  textStyle?: any;
+  isDisable?: boolean;
 }
 
-const CustomButton = ({ type="main", text, onClick }: ButtonProps) => {
+const CustomButton = ({
+  type = "main",
+  text,
+  onClick,
+  style,
+  textStyle,
+  isDisable,
+  ...props
+}: ButtonProps) => {
   return (
     <TouchableOpacity
+      {...props}
       onPress={onClick}
       style={[
         styles.Btn,
         {
-          backgroundColor:
-            type === "outline"
+          backgroundColor: isDisable
+            ? "#E5E7EB"
+            : type === "outline"
               ? "white"
               : type === "destructive"
                 ? "#BC0E01"
                 : colors.main,
         },
+        style,
       ]}
     >
       <Text
@@ -34,6 +48,10 @@ const CustomButton = ({ type="main", text, onClick }: ButtonProps) => {
                 : type === "destructive"
                   ? "#fff"
                   : colors.gold,
+          },
+          textStyle,
+          {
+            color: isDisable ? "#9CA3AF" : colors.gold,
           },
         ]}
       >
