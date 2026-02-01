@@ -319,7 +319,7 @@ export default function VehicleInfoScreen() {
               style={styles.input}
               value={licensePlate}
               onChangeText={setLicensePlate}
-            />
+            />  
           </View>
         </View>
 

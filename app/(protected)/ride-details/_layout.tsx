@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import { StatusBar } from "react-native";
 
 export default function RootLayout() {
   return (
@@ -8,7 +7,6 @@ export default function RootLayout() {
         headerShown: false,
       }}
     >
-      <StatusBar barStyle="dark-content" />
       <Stack.Screen name="index" />
     </Stack>
   );

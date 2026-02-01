@@ -138,11 +138,20 @@ export default function RideDetailsScreen() {
         </View>
 
         {/* Rider Review Section */}
-        <ReviewCard />
+        <ReviewCard
+          name="Tuval Mor"
+          role="Rider"
+          rating="5.0"
+          comment="Great driver! Friendly, respectful, and easy to communicate with. Would be happy to have them again."
+          avatar={require("@/assets/images/demo-profile.png")}
+        />
 
         {/* Help Section */}
         <Text style={styles.sectionHeader}>Help</Text>
-        <Pressable style={styles.helpButton}>
+        <Pressable
+          style={styles.helpButton}
+          onPress={() => router.push("/(protected)/(account)/support")}
+        >
           <MaterialCommunityIcons name="headset" size={22} color="#1A1A1A" />
           <Text style={styles.helpButtonText}>Customer Support</Text>
         </Pressable>

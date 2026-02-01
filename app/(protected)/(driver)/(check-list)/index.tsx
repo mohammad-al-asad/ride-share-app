@@ -64,9 +64,8 @@ export default function OnboardingChecklist() {
   return (
     <SafeAreaView style={styles.container}>
       <AuthBackground />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <View
+        style={styles.scrollContent}
       >
         <View style={styles.header}>
           <Text style={styles.welcomeText}>Welcome, David</Text>
@@ -116,7 +115,7 @@ export default function OnboardingChecklist() {
           *Don&apos;t forget to add your contact information in Account
           Navigation → Personal Info.
         </Text>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }

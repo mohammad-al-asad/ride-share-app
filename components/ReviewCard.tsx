@@ -4,30 +4,24 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
-const ReviewCard = () => {
-  return (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <Image
-          source={{ uri: "https://placeholder.com/rider" }}
-          style={styles.smallAvatar}
-        />
-        <View style={{ flex: 1, marginLeft: scale(10) }}>
-          <Text style={styles.reviewerName}>Tuval Mor</Text>
-          <Text style={styles.reviewerRole}>Rider</Text>
-        </View>
-        <View style={styles.ratingBadge}>
-          <Ionicons name="star" size={12} color="#FBBF24" />
-          <Text style={styles.ratingText}>4.5</Text>
+const ReviewCard = ({ name, role, rating, comment, avatar }: any) => (
+  <View style={styles.reviewCard}>
+    <View style={styles.reviewHeader}>
+      <View style={styles.userInfo}>
+        <Image source={avatar} style={styles.reviewerAvatar} />
+        <View style={styles.nameContainer}>
+          <Text style={styles.reviewerName}>{name}</Text>
+          <Text style={styles.reviewerRole}>{role}</Text>
         </View>
       </View>
-      <Text style={styles.reviewBody}>
-        Great driver! Friendly, respectful, and easy to communicate with. Would
-        be happy to have them again.
-      </Text>
+      <View style={styles.ratingBadge}>
+        <Ionicons name="star" size={14} color="#FBBF24" />
+        <Text style={styles.ratingText}>{rating}</Text>
+      </View>
     </View>
-  );
-};
+    <Text style={styles.commentText}>{comment}</Text>
+  </View>
+);
 
 export default ReviewCard;
 
@@ -35,46 +29,37 @@ const styles = StyleSheet.create({
   reviewCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: scale(12),
-    padding: scale(15),
-    marginBottom: verticalScale(12),
+    padding: scale(16),
+    marginBottom: verticalScale(15),
     elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   reviewHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: verticalScale(10),
+    justifyContent: "space-between",
+    marginBottom: verticalScale(12),
   },
-  smallAvatar: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
-    backgroundColor: "#E5E7EB",
+  userInfo: { flexDirection: "row", alignItems: "center" },
+  reviewerAvatar: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
   },
+  nameContainer: { marginLeft: scale(10) },
   reviewerName: {
     fontSize: moderateScale(14),
     fontWeight: "bold",
+    color: "#1A1A1A",
   },
-  reviewerRole: {
-    fontSize: moderateScale(12),
-    color: "#9CA3AF",
+  reviewerRole: { fontSize: moderateScale(12), color: "#9CA3AF" },
+  ratingBadge: { flexDirection: "row", alignItems: "center" },
+  ratingText: {
+    fontSize: moderateScale(14),
+    marginLeft: scale(4),
+    color: "#1A1A1A",
   },
-  reviewBody: {
+  commentText: {
     fontSize: moderateScale(13),
     color: "#4B5563",
-    lineHeight: moderateScale(18),
-  },
-  ratingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: scale(8),
-  },
-  ratingText: {
-    fontSize: moderateScale(12),
-    color: "#6B7280",
-    marginLeft: scale(2),
+    lineHeight: moderateScale(20),
   },
 });

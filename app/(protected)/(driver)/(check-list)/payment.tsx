@@ -3,33 +3,35 @@ import CustomButton from "@/components/CustomButton";
 import { CustomInput } from "@/components/CustomInput";
 import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { moderateScale, verticalScale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const Payment = () => {
   const [address, setaddress] = useState("");
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, justifyContent: "center" }}>
       <AuthBackground />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Enter your Stripe ID</Text>
-        <Text style={styles.subTitle}>
-          Open a stripe account. Copy the id and paste it here.
-        </Text>
-      </View>
-      <View style={styles.form}>
-        <Text style={styles.label}>Stripe Account ID</Text>
-        <CustomInput
-          placeholder="4"
-          value={address}
-          onChangeText={setaddress}
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Enter your Stripe ID</Text>
+          <Text style={styles.subTitle}>
+            Open a stripe account. Copy the id and paste it here.
+          </Text>
+        </View>
+        <View style={styles.form}>
+          <Text style={styles.label}>Stripe Account ID</Text>
+          <CustomInput
+            placeholder="4"
+            value={address}
+            onChangeText={setaddress}
+          />
+        </View>
+        <CustomButton
+          type="main"
+          text="Done"
+          onClick={() => {}}
+          isDisable={!address}
         />
       </View>
-      <CustomButton
-        type="main"
-        text="Done"
-        onClick={() => {}}
-        isDisable={!address}
-      />
     </View>
   );
 };
@@ -38,13 +40,18 @@ export default Payment;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#F8F9FF",
+    backgroundColor: "#FFF",
     paddingHorizontal: verticalScale(20),
+    paddingVertical: verticalScale(20),
     justifyContent: "center",
+    margin: scale(20),
+    marginTop: 0,
+    borderRadius: scale(12),
+    borderWidth: 1,
+    borderColor: "#DAD6FF",
   },
   header: {
-    marginBottom: verticalScale(20),
+    marginBottom: verticalScale(10),
   },
   headerTitle: {
     fontSize: moderateScale(22),

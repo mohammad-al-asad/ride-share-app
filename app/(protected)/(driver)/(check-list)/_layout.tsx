@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
-import { StatusBar, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StatusBar, StyleSheet, TouchableOpacity } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 
 export default function Layout() {
@@ -9,6 +9,7 @@ export default function Layout() {
       <StatusBar barStyle="dark-content" />
       <Stack
         screenOptions={{
+          headerTitleAlign: "center",
           headerLeft: () => (
             <TouchableOpacity
               style={styles.backBtn}
@@ -26,22 +27,7 @@ export default function Layout() {
         <Stack.Screen
           name="index"
           options={{
-            header: () => (
-              <View
-                style={{
-                  height: 70,
-                  backgroundColor: "white",
-                  shadowColor: "#000",
-                  shadowOffset: {
-                    width: 0,
-                    height: 2,
-                  },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 3.84,
-                  elevation: 5,
-                }}
-              ></View>
-            ),
+            title: "Documents",
           }}
         />
         <Stack.Screen

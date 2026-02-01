@@ -11,49 +11,83 @@ import Animated, {
 } from "react-native-reanimated";
 import { scale, verticalScale } from "react-native-size-matters";
 
-const TAB_WIDTH = scale(100); // approximate tab width
-
 export default function RootLayout() {
   const pathname = usePathname();
 
   const translateX = useSharedValue(0);
+  const tabWidth = useSharedValue(0);
 
-  // Map route to index
+  const driver = true;
+
+  const tabs = [
+    { name: "index", href: "/", icon: "home-outline", label: "Home" },
+    ...(driver
+      ? [
+          {
+            name: "earnings",
+            href: "/earnings",
+            icon: "wallet-outline",
+            label: "Earnings",
+          },
+        ]
+      : []),
+    {
+      name: "activity",
+      href: "/activity",
+      icon: "document-text-outline",
+      label: "Activity",
+    },
+    {
+      name: "account",
+      href: "/account",
+      icon: "person-outline",
+      label: "Account",
+    },
+  ];
+
+  const activeIndex = tabs.findIndex((tab) => tab.href === pathname);
+
   useEffect(() => {
-    let index = 0;
+    if (tabWidth.value === 0) return;
 
-    if (pathname === "/activity") index = 1;
-    if (pathname === "/account") index = 2;
+    const singleTabWidth = tabWidth.value / tabs.length;
 
-    translateX.value = withTiming(index * TAB_WIDTH, {
-      duration: 350,
+    translateX.value = withTiming(activeIndex * singleTabWidth, {
+      duration: 300,
     });
   }, [pathname]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    const singleTabWidth = tabWidth.value / tabs.length;
+
+    return {
+      width: singleTabWidth - 20,
+      transform: [{ translateX: translateX.value + 10 }],
+    };
+  });
 
   return (
-    <Tabs options={{ initialRouteName: "index" }}>
-      <StatusBar barStyle="dark-content" />
+    <Tabs>
       <TabSlot />
 
-      <TabList style={styles.tabBar}>
-        {/* Sliding Indicator */}
+      <TabList
+        style={styles.tabBar}
+        onLayout={(e) => {
+          tabWidth.value = e.nativeEvent.layout.width;
+        }}
+      >
         <Animated.View style={[styles.indicator, animatedStyle]} />
 
-        <TabTrigger name="index" href="/" asChild>
-          <TabButton icon="home-outline">Home</TabButton>
-        </TabTrigger>
-
-        <TabTrigger name="activity" href="/activity" asChild>
-          <TabButton icon="document-text-outline">Activity</TabButton>
-        </TabTrigger>
-
-        <TabTrigger name="account" href="/account" asChild>
-          <TabButton icon="person-outline">Account</TabButton>
-        </TabTrigger>
+        {tabs.map((tab) => (
+          <TabTrigger
+            key={tab.name}
+            name={tab.name}
+            href={`/(protected)/(tab)${tab.href}` as any}
+            asChild
+          >
+            <TabButton icon={tab.icon as any}>{tab.label}</TabButton>
+          </TabTrigger>
+        ))}
       </TabList>
     </Tabs>
   );
@@ -76,13 +110,12 @@ const styles = StyleSheet.create({
     elevation: 5,
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: scale(10),
+    paddingHorizontal: scale(0),
   },
   indicator: {
     position: "absolute",
     top: 0,
-    left: scale(15),
-    width: TAB_WIDTH - scale(20),
+    left: 0,
     height: verticalScale(3),
     borderRadius: scale(2),
     backgroundColor: colors.main,

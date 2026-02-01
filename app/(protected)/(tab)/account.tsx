@@ -15,7 +15,7 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 export default function ProfileScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState(false);
-
+  const isDriver = true;
   return (
     <View style={styles.container}>
       <AuthBackground />
@@ -83,12 +83,24 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>My Ratings & Reviews</Text>
         <View style={styles.card}>
           <SettingItem
-            icon="star-outline"
-            label="Feedback"
+            icon="document-text-outline"
+            label="Documents"
             onPress={() => {
-              router.push("/(protected)/(account)/feedback");
+              router.push("/(protected)/(driver)/(check-list)");
             }}
           />
+          {isDriver && (
+            <>
+              <View style={styles.divider} />
+              <SettingItem
+                icon="star-outline"
+                label="Feedback"
+                onPress={() => {
+                  router.push("/(protected)/(account)/feedback");
+                }}
+              />
+            </>
+          )}
         </View>
 
         {/* Support Group */}
@@ -171,7 +183,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     padding: scale(15),
     paddingTop: scale(45),
-    marginBottom: scale(20),
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -185,6 +196,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   scrollContent: {
+    paddingTop: scale(20),
     paddingHorizontal: scale(20),
     paddingBottom: verticalScale(120),
   },

@@ -38,7 +38,7 @@ export default function App() {
   isAuthenticated = "true";
   useLayoutEffect(() => {
     setTimeout(() => {
-      if (isAuthenticated === "true") router.replace("/(driver)");
+      if (isAuthenticated === "true") router.replace("/(protected)/(tab)");
     }, 2000);
   }, [isAuthenticated]);
 
