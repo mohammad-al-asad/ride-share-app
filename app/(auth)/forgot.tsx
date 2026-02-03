@@ -43,7 +43,7 @@ export default function ForgotPasswordScreen() {
                   router.push({
                     pathname: "/(auth)/verify-otp",
                     params: {
-                      path: "/(auth)/change-password",
+                      path: "/(auth)/set-password",
                     },
                   });
                 }}

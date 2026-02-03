@@ -53,7 +53,7 @@ const PasswordSuccess: React.FC = () => {
         <CustomButton
           type="main"
           text="Next"
-          onClick={() => router.replace("/(auth)/set-profile")}
+          onClick={() => router.replace("/(auth)/login")}
         />
       )}
     </View>

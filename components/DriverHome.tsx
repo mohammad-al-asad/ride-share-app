@@ -1,11 +1,12 @@
 import { colors } from "@/config/colors";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { moderateScale, scale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import AuthBackground from "./AuthBackground";
 import { router } from "expo-router";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 export default function HomeScreen() {
   return (
@@ -34,8 +35,9 @@ export default function HomeScreen() {
         </View>
 
         {/* Map Section */}
-        {/* <View style={styles.mapContainer}>
+        <View style={styles.mapContainer}>
         <MapView
+        provider={PROVIDER_GOOGLE}
           style={styles.map}
           initialRegion={{
             latitude: 32.7767,
@@ -51,7 +53,7 @@ export default function HomeScreen() {
             }}
           />
         </MapView>
-      </View> */}
+      </View>
 
         {/* Go Online Button */}
         <View style={{ alignItems: "center" }}>
@@ -134,6 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.main,
     marginHorizontal: scale(20),
     marginVertical: scale(15),
+    marginBottom: verticalScale(100),
     paddingVertical: scale(14),
     borderRadius: scale(12),
     justifyContent: "center",

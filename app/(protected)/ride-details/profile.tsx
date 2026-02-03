@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 10,
     padding: scale(10),
-    paddingTop: scale(30),
+    paddingTop: scale(45),
 },
 backButton: {
     backgroundColor: "#FFFFFF",

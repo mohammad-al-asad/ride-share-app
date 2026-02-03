@@ -1,8 +1,16 @@
 import AuthBackground from "@/components/AuthBackground";
+import { colors } from "@/config/colors";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import CustomButton from "../../components/CustomButton";
 import { CustomInput } from "../../components/CustomInput";
 
@@ -11,10 +19,7 @@ export default function SetPasswordFormScreen() {
 
   const setPassword = () => {
     router.replace({
-      pathname: "/(auth)/password-success",
-      params: {
-        title: "Successfully Changed",
-      },
+      pathname: "/(auth)/login",
     });
   };
 
@@ -54,6 +59,13 @@ export default function SetPasswordFormScreen() {
 
         {/* Replaced with CustomButton */}
         <CustomButton type="primary" text="Next" onClick={setPassword} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.main} />
+          <Text style={styles.backText}>Back to profile</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -82,5 +94,17 @@ const styles = StyleSheet.create({
     color: "#444",
     marginBottom: 8,
     marginLeft: 2,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    gap: 4,
+  },
+  backText: {
+    color: colors.main,
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

@@ -12,9 +12,18 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to provide pickup suggestions"
+      },
+      "bundleIdentifier": "com.app.ma3",
+      "config": {
+        "googleMapsApiKey": "AIzaSyANMAxRm284xokb7ENM31oEXPdq59Itflc"
       }
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyANMAxRm284xokb7ENM31oEXPdq59Itflc"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -42,21 +51,21 @@
             "datePicker": {
               "colorAccent": {
                 "light": "#240183",
-                "dark": "#A6AFFF"
+                "dark": "#240183"
               },
               "textColorPrimary": {
                 "light": "#1A1A1A",
-                "dark": "#FFFFFF"
+                "dark": "#1A1A1A"
               }
             },
             "timePicker": {
               "background": {
                 "light": "#FFFFFF",
-                "dark": "#1A1A1A"
+                "dark": "#FFFFFF"
               },
               "numbersBackgroundColor": {
                 "light": "#F1F2F4",
-                "dark": "#383838"
+                "dark": "#F1F2F4"
               }
             }
           }
@@ -90,7 +99,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "4d5afbdd-32b7-4c90-ad29-e69723b2c1b3"
+        "projectId": "ccd037c7-d50b-46c9-a085-2d830f445037"
       }
     }
   }

@@ -81,7 +81,7 @@ export default function VehicleInfoScreen() {
 
   const years = useMemo(
     () =>
-      Array.from({ length: 27 }, (_, i) => {
+      Array.from({ length: 12 }, (_, i) => {
         const year = (2026 - i).toString();
         return { label: year, value: year };
       }),
@@ -181,14 +181,14 @@ export default function VehicleInfoScreen() {
 
         {/* Brand */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Brand</Text>
+          <Text style={styles.inputLabel}>Make</Text>
           <Dropdown
             style={styles.dropdown}
             data={makes}
             labelField="label"
             valueField="value"
             value={selectedMake}
-            placeholder={loadingMakes ? "Loading..." : "Select Brand"}
+            placeholder={loadingMakes ? "Loading..." : "Select Make"}
             renderRightIcon={() =>
               loadingMakes ? (
                 <ActivityIndicator size="small" color={colors.main} />
@@ -218,7 +218,7 @@ export default function VehicleInfoScreen() {
                 ? "Loading models..."
                 : selectedMake
                   ? "Select Model"
-                  : "Select Brand first"
+                  : "Select Make first"
             }
             renderRightIcon={() =>
               loadingModels ? (
