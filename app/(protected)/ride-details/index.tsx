@@ -39,7 +39,7 @@ export default function RideDetailsScreen() {
         {/* Driver Profile Section */}
         <View style={styles.profileRow}>
           <Image
-            source={{ uri: "https://placeholder.com/driver" }}
+            source={require("@/assets/images/demo-profile.png")}
             style={styles.avatar}
           />
           <View style={styles.driverInfo}>

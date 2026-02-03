@@ -1,5 +1,7 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
+import { useAppDispatch } from "@/redux/hooks";
+import { persistCredentials } from "@/redux/slices/authSlice";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -17,6 +19,7 @@ export default function ChooseRoleScreen() {
   const [selectedRole, setSelectedRole] = useState<
     "customer" | "driver" | null
   >(null);
+  const dispatch = useAppDispatch();
 
   return (
     <View style={styles.container}>
@@ -53,9 +56,16 @@ export default function ChooseRoleScreen() {
             text="Next"
             onClick={() => {
               if (selectedRole === "customer") {
+                dispatch(
+                  persistCredentials({
+                    user: { role: "customer" },
+                    token: "token",
+                  }),
+                );
                 router.replace("/(auth)/set-profile");
               } else if (selectedRole === "driver") {
-                router.replace("/(driver)");
+                dispatch(persistCredentials({ user:{role:"driver"}, token:"token" }));
+                router.replace("/(protected)/(driver)");
               }
             }}
           />

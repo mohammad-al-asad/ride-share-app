@@ -16,7 +16,7 @@ export default function AddPhotoScreen() {
       {/* Skip Button */}
       <TouchableOpacity
         style={styles.skipContainer}
-        onPress={() => router.replace("/(protected)" as any) }
+        onPress={() => router.replace("/(protected)/(tab)")}
       >
         <Text style={styles.skipText}>SKIP</Text>
       </TouchableOpacity>

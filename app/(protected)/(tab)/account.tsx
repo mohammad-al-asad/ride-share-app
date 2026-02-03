@@ -1,6 +1,9 @@
 import AuthBackground from "@/components/AuthBackground";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import { colors } from "@/config/colors";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { performLogout } from "@/redux/slices/authSlice";
+import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
@@ -15,7 +18,10 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 export default function ProfileScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState(false);
-  const isDriver = true;
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const isDriver = user?.role === "driver";
+  const dispatch = useAppDispatch();
+
   return (
     <View style={styles.container}>
       <AuthBackground />
@@ -83,20 +89,20 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>My Ratings & Reviews</Text>
         <View style={styles.card}>
           <SettingItem
-            icon="document-text-outline"
-            label="Documents"
+            icon="star-outline"
+            label="Feedback"
             onPress={() => {
-              router.push("/(protected)/(driver)/(check-list)");
+              router.push("/(protected)/(account)/feedback");
             }}
           />
           {isDriver && (
             <>
               <View style={styles.divider} />
               <SettingItem
-                icon="star-outline"
-                label="Feedback"
+                icon="document-text-outline"
+                label="Documents"
                 onPress={() => {
-                  router.push("/(protected)/(account)/feedback");
+                  router.push("/(protected)/(driver)/(check-list)");
                 }}
               />
             </>
@@ -133,7 +139,14 @@ export default function ProfileScreen() {
 
         {/* Account Actions Group */}
         <View style={[styles.card, { marginTop: verticalScale(20) }]}>
-          <SettingItem icon="log-out-outline" label="Logout" />
+          <SettingItem
+            icon="log-out-outline"
+            label="Logout"
+            onPress={() => {
+              dispatch(performLogout());
+              router.replace("/(auth)/login");
+            }}
+          />
           <View style={styles.divider} />
           <SettingItem
             icon="trash-outline"

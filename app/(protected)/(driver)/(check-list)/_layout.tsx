@@ -1,73 +1,70 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
-import { StatusBar, StyleSheet, TouchableOpacity } from "react-native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 
 export default function Layout() {
   return (
-    <>
-      <StatusBar barStyle="dark-content" />
-      <Stack
-        screenOptions={{
-          headerTitleAlign: "center",
-          headerLeft: () => (
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => router.back()}
-            >
-              <MaterialCommunityIcons
-                name="chevron-left"
-                size={24}
-                color="#262626"
-              />
-            </TouchableOpacity>
-          ),
+    <Stack
+      screenOptions={{
+        headerTitleAlign: "center",
+        headerLeft: () => (
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
+            <MaterialCommunityIcons
+              name="chevron-left"
+              size={24}
+              color="#262626"
+            />
+          </TouchableOpacity>
+        ),
+      }}
+    >
+      <Stack.Screen
+        name="index"
+        options={{
+          title: "Documents",
         }}
-      >
-        <Stack.Screen
-          name="index"
-          options={{
-            title: "Documents",
-          }}
-        />
-        <Stack.Screen
-          name="profile-picture"
-          options={{
-            title: "Profile Picture",
-          }}
-        />
-        <Stack.Screen
-          name="driver-license"
-          options={{
-            title: "Driver License",
-          }}
-        />
-        <Stack.Screen
-          name="registration"
-          options={{
-            title: "Driver Registration",
-          }}
-        />
-        <Stack.Screen
-          name="insurance"
-          options={{
-            title: "Vehicle Insurance Paper",
-          }}
-        />
-        <Stack.Screen
-          name="payment"
-          options={{
-            title: "Payment Information",
-          }}
-        />
-        <Stack.Screen
-          name="vehicle-info"
-          options={{
-            title: "Vehicle Information",
-          }}
-        />
-      </Stack>
-    </>
+      />
+      <Stack.Screen
+        name="profile-picture"
+        options={{
+          title: "Profile Picture",
+        }}
+      />
+      <Stack.Screen
+        name="driver-license"
+        options={{
+          title: "Driver License",
+        }}
+      />
+      <Stack.Screen
+        name="registration"
+        options={{
+          title: "Driver Registration",
+        }}
+      />
+      <Stack.Screen
+        name="insurance"
+        options={{
+          title: "Vehicle Insurance Paper",
+        }}
+      />
+      <Stack.Screen
+        name="payment"
+        options={{
+          title: "Payment Information",
+        }}
+      />
+      <Stack.Screen
+        name="vehicle-info"
+        options={{
+          title: "Vehicle Information",
+        }}
+      />
+    </Stack>
   );
 }
 
@@ -81,7 +78,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F4F4F6",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: scale(20),
     marginVertical: scale(12),
   },
 });

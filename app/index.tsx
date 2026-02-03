@@ -1,5 +1,8 @@
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { loadCredentials } from "@/redux/slices/authSlice";
+import { RootState } from "@/redux/store";
 import {
   Trispace_400Regular,
   Trispace_700Bold,
@@ -11,18 +14,23 @@ import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useLayoutEffect } from "react";
 // Added ImageBackground to imports
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   Easing,
   interpolateColor,
-  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
 } from "react-native-reanimated";
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.hideAsync();
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -33,12 +41,14 @@ export default function App() {
 
   const stage = useSharedValue(0);
   const router = useRouter();
-  let isAuthenticated: any;
+  const token = useAppSelector((state: RootState) => state.auth.token);
+  let isAuthenticated = token ? true : false;
+  const dispatch = useAppDispatch();
 
-  isAuthenticated = "true";
   useLayoutEffect(() => {
+    dispatch(loadCredentials());
     setTimeout(() => {
-      if (isAuthenticated === "true") router.replace("/(protected)/(tab)");
+      if (isAuthenticated) router.replace("/(protected)/(tab)");
     }, 2000);
   }, [isAuthenticated]);
 
@@ -60,7 +70,6 @@ export default function App() {
           },
         ),
       );
-      SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
 
@@ -113,21 +122,22 @@ export default function App() {
     ],
   }));
 
-  useAnimatedReaction(
-    () => stage.value,
-    (currentStage) => {
-      if (currentStage === 2 && isAuthenticated === "true") {
-        // runOnJS(() => {
-        //   console.log("gotcha",currentStage,isAuthenticated);
-        // })();
-      }
-    },
-  );
+  // useAnimatedReaction(
+  //   () => stage.value,
+  //   (currentStage) => {
+  //     if (currentStage === 2 && isAuthenticated === "true") {
+  //       // runOnJS(() => {
+  //       //   console.log("gotcha",currentStage,isAuthenticated);
+  //       // })();
+  //     }
+  //   },
+  // );
 
   if (!fontsLoaded) return null;
 
   return (
     <Animated.View style={[styles.container, containerStyle]}>
+      <StatusBar hidden />
       {/* Main Content */}
       <Animated.Image
         source={require("../assets/images/logo-golden.png")}

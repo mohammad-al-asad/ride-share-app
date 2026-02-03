@@ -1,10 +1,13 @@
 import DriverHome from "@/components/DriverHome";
 import HomeScreen from "@/components/Home";
-import { StyleSheet, View } from "react-native";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
+import { StyleSheet } from "react-native";
 
 export default function Home() {
-  const isDriver = true;
-  return isDriver ? <DriverHome /> : <HomeScreen />
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const isDriver = user?.role === "driver";
+  return isDriver ? <DriverHome /> : <HomeScreen />;
 }
 
 const styles = StyleSheet.create({});

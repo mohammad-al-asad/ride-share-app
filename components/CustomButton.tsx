@@ -44,15 +44,17 @@ const CustomButton = ({
           {
             color:
               type === "outline"
-                ? "black"
+                ? "#000"
                 : type === "destructive"
                   ? "#fff"
                   : colors.gold,
           },
           textStyle,
-          {
-            color: isDisable ? "#9CA3AF" : colors.gold,
-          },
+          ...[
+            isDisable && {
+              color: "#9CA3AF",
+            },
+          ],
         ]}
       >
         {text}

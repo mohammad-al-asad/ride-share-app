@@ -38,7 +38,7 @@ export default function WelcomeScreen({ navigation }: any) {
         {/* Action Button */}
         <CustomButton
           text="Next"
-          onClick={() => router.push("/(protected)/(driver)/(check-list)")}
+          onClick={() => router.replace("/(protected)/(driver)/(check-list)")}
           type="main"
         />
       </View>

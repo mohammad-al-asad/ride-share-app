@@ -1,9 +1,11 @@
 import TabButton from "@/components/TabButton";
 import { colors } from "@/config/colors";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import { usePathname } from "expo-router";
 import { TabList, Tabs, TabSlot, TabTrigger } from "expo-router/ui";
 import React, { useEffect } from "react";
-import { StatusBar, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -16,12 +18,12 @@ export default function RootLayout() {
 
   const translateX = useSharedValue(0);
   const tabWidth = useSharedValue(0);
-
-  const driver = true;
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const isDriver = user?.role === "driver";
 
   const tabs = [
     { name: "index", href: "/", icon: "home-outline", label: "Home" },
-    ...(driver
+    ...(isDriver
       ? [
           {
             name: "earnings",

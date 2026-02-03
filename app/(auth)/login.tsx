@@ -17,12 +17,13 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = () => {
-    router.replace("/(protected)/(tab)");
+    // router.replace("/(protected)/(tab)");
   };
 
   const handleGoogleLogin = () => {
     console.log("Google login pressed");
   };
+
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

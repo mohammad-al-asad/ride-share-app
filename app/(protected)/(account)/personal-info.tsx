@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    marginBottom: verticalScale(15),
+    marginBottom: verticalScale(10),
   },
 
   label: {
@@ -78,10 +78,11 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     flexDirection: "row",
     alignItems: "center",
-    width: scale(114),
-    paddingHorizontal: scale(25),
-    paddingVertical: verticalScale(12),
+    width: scale(100),
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(9),
     borderRadius: scale(14),
+    marginRight:scale(8),
     elevation: 5,
     shadowColor: "#000",
     shadowOpacity: 0.3,

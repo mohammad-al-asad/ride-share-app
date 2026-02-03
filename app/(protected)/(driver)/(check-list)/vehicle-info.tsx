@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 import { TextInput } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 export default function VehicleInfoScreen() {
@@ -164,7 +163,7 @@ export default function VehicleInfoScreen() {
   /* ---------------- UI ---------------- */
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <AuthBackground />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -319,7 +318,7 @@ export default function VehicleInfoScreen() {
               style={styles.input}
               value={licensePlate}
               onChangeText={setLicensePlate}
-            />  
+            />
           </View>
         </View>
 
@@ -327,7 +326,7 @@ export default function VehicleInfoScreen() {
           <CustomButton text="Next" onClick={() => {}} type="main" />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   titleInputWrapper: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#DAD6FF",
     borderRadius: scale(12),
     paddingHorizontal: scale(15),
     height: verticalScale(45),
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   issueInputWrapper: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#DAD6FF",
     borderRadius: scale(12),
     paddingHorizontal: scale(15),
     paddingVertical: verticalScale(15),
