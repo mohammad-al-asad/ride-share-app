@@ -1,21 +1,69 @@
 import { colors } from "@/config/colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import React from "react";
+import * as Location from "expo-location";
+import { router } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import MapView, { Marker } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import AuthBackground from "./AuthBackground";
-import { router } from "expo-router";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { MarkerCircle } from "./Markers";
+import RequiredActions from "./RequiredActions";
 
 export default function HomeScreen() {
+  const [driverLocation, setDriverLocation] = useState<any>(null);
+  const [heading, setHeading] = useState<number>(0);
+  const mapRef = useRef<MapView | null>(null);
+
+  useEffect(() => {
+    let subscription: Location.LocationSubscription;
+
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      // const currentLocation = await Location.getCurrentPositionAsync({});
+      // setDriverLocation({
+      //   latitude: currentLocation.coords.latitude,
+      //   longitude: currentLocation.coords.longitude,
+      // });
+      setDriverLocation({
+        latitude: 32.78,
+        longitude: -96.8,
+      });
+
+      // subscription = await Location.watchPositionAsync(
+      //   {
+      //     accuracy: Location.Accuracy.High,
+      //     timeInterval: 2000,
+      //     distanceInterval: 2,
+      //   },
+      //   (location) => {
+      //     const { latitude, longitude, heading } = location.coords;
+
+      //     setDriverLocation({ latitude, longitude });
+      // setHeading(heading || 0);
+
+      //     mapRef.current?.animateCamera({
+      //       center: { latitude, longitude },
+      //       zoom: 17,
+      //     });
+      //   },
+      // );
+    })();
+
+    // return () => {
+    //   subscription?.remove();
+    // };
+  }, []);
+
   return (
     <View style={styles.mainContainer}>
-      {/* Background Grid */}
       <AuthBackground />
 
       <View style={styles.container}>
-        {/* Header Section */}
+        {/* Header */}
         <View style={styles.header}>
           <Image
             source={require("../assets/images/logo-blue.svg")}
@@ -25,43 +73,63 @@ export default function HomeScreen() {
           <Text style={styles.welcomeText}>Welcome, Harish!</Text>
         </View>
 
-        {/* Required Actions Card */}
-        <View style={styles.card}>
-          <View style={styles.cardRow}>
-            <Ionicons name="alert-circle" size={20} color="red" />
-            <Text style={styles.cardTitle}>Required actions (1)</Text>
-          </View>
-          <Text style={styles.cardSubtitle}>Go online when resolved</Text>
-        </View>
-
-        {/* Map Section */}
-        <View style={styles.mapContainer}>
-        <MapView
-        provider={PROVIDER_GOOGLE}
-          style={styles.map}
-          initialRegion={{
-            latitude: 32.7767,
-            longitude: -96.797,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
+        {/* Card */}
+        <View
+          style={{
+            paddingHorizontal: scale(15),
           }}
         >
-          <Marker
-            coordinate={{
-              latitude: 32.7767,
-              longitude: -96.797,
-            }}
-          />
-        </MapView>
-      </View>
+          <RequiredActions />
+        </View>
 
-        {/* Go Online Button */}
+        {/* Map */}
+        <View style={styles.mapContainer}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            showsUserLocation={false}
+            showsMyLocationButton={true}
+            initialRegion={{
+              latitude: 32.78,
+              longitude: -96.8,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+          >
+            {driverLocation && (
+              <Marker
+                coordinate={driverLocation}
+                anchor={{ x: 0.5, y: 0.5 }}
+                flat
+                rotation={heading}
+              >
+                <MarkerCircle />
+              </Marker>
+            )}
+          </MapView>
+          <TouchableOpacity
+            style={styles.maximizeBtn}
+            onPress={() => {
+              router.push({
+                pathname: "/(protected)/(driver)/(home)/zoomed-map",
+              });
+            }}
+          >
+            <Ionicons name="expand" size={20} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Button */}
         <View style={{ alignItems: "center" }}>
-          <TouchableOpacity onPress={()=>router.push("/(protected)/ride-details/profile")} style={styles.goOnlineButton}>
-            <MaterialCommunityIcons name="steering" size={24} color={colors.gold} />
+          <TouchableOpacity onPress={() => {}} style={styles.goOnlineButton}>
+            <MaterialCommunityIcons
+              name="steering"
+              size={24}
+              color={colors.gold}
+            />
             <Text style={styles.goOnlineText}>Go Online</Text>
           </TouchableOpacity>
-        </View>     
+        </View>
       </View>
     </View>
   );
@@ -92,7 +160,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#1A1A1A",
   },
-
   card: {
     backgroundColor: "white",
     marginHorizontal: scale(20),
@@ -101,23 +168,19 @@ const styles = StyleSheet.create({
     borderRadius: scale(12),
     elevation: 3,
   },
-
   cardRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
-
   cardTitle: {
     fontWeight: "600",
     marginLeft: 5,
   },
-
   cardSubtitle: {
     color: "#666",
     marginTop: 4,
   },
-
   mapContainer: {
     flex: 1,
     marginHorizontal: scale(20),
@@ -125,11 +188,18 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     overflow: "hidden",
   },
-
   map: {
     flex: 1,
   },
-
+  maximizeBtn: {
+    position: "absolute",
+    top: scale(15),
+    right: scale(15),
+    backgroundColor: "#C3CCFF",
+    padding: scale(8),
+    borderRadius: scale(100),
+    zIndex: 10,
+  },
   goOnlineButton: {
     flexDirection: "row",
     width: scale(150),
@@ -143,7 +213,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: scale(8),
   },
-
   goOnlineText: {
     color: colors.gold,
     fontWeight: "600",

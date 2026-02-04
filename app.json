@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "riding-app",
-    "slug": "riding-app",
+    "name": "ma3",
+    "slug": "ma3",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo-golden.png",
@@ -44,6 +44,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "react-native-maps",
+        {
+          "iosGoogleMapsApiKey": "AIzaSyANMAxRm284xokb7ENM31oEXPdq59Itflc",
+          "androidGoogleMapsApiKey": "AIzaSyANMAxRm284xokb7ENM31oEXPdq59Itflc"
+        }
+      ],
       [
         "@react-native-community/datetimepicker",
         {
