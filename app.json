@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "ma3",
+    "name": "MA3",
     "slug": "ma3",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo-golden.png",
+    "icon": "./assets/icons/App-icon.png",
     "scheme": "ridingapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,20 +15,18 @@
       },
       "bundleIdentifier": "com.app.ma3",
       "config": {
-        "googleMapsApiKey": "AIzaSyANMAxRm284xokb7ENM31oEXPdq59Itflc"
+        "googleMapsApiKey": "process.env.EXPO_PUBLIC_MAP_API_KEY"
       }
     },
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyANMAxRm284xokb7ENM31oEXPdq59Itflc"
+          "apiKey": "process.env.EXPO_PUBLIC_MAP_API_KEY"
         }
       },
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#240183",
+        "foregroundImage": "./assets/icons/App-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

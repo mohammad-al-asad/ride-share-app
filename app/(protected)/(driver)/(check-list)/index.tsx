@@ -1,15 +1,11 @@
 import AuthBackground from "@/components/AuthBackground";
 import { colors } from "@/config/colors";
 import { Ionicons } from "@expo/vector-icons";
+import { Home01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { useRouter } from "expo-router"; //
 import React from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -64,9 +60,7 @@ export default function OnboardingChecklist() {
   return (
     <SafeAreaView style={styles.container}>
       <AuthBackground />
-      <View
-        style={styles.scrollContent}
-      >
+      <View style={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.welcomeText}>Welcome, David</Text>
           <Text style={styles.subText}>
@@ -102,12 +96,7 @@ export default function OnboardingChecklist() {
           style={styles.homeButton}
           onPress={() => router.push("/(protected)/(tab)")}
         >
-          <Ionicons
-            name="home-outline"
-            size={20}
-            color={colors.main}
-            style={styles.homeIcon}
-          />
+          <HugeiconsIcon icon={Home01Icon} size={20} color={colors.main} />
           <Text style={styles.homeButtonText}>Go to Home page</Text>
         </TouchableOpacity>
 
@@ -180,10 +169,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: verticalScale(30),
   },
-  homeIcon: {
-    marginRight: scale(8),
-  },
   homeButtonText: {
+    marginLeft: scale(8),
     fontSize: moderateScale(16),
     fontWeight: "600",
     color: colors.main,

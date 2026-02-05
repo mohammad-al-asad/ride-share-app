@@ -1,13 +1,32 @@
+import { colors } from "@/config/colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import ConfirmationModal from "./ConfirmationModal";
+import VerifyRiderModal from "./VerifyRiderModal";
 
 const RiderPickupCard = () => {
+  const [isModal, setIsModal] = useState(false);
+  const [isCancelModal, setIsCancelModal] = useState(false);
   return (
     <View style={styles.container}>
+      <ConfirmationModal
+        visible={isCancelModal}
+        onClose={() => setIsCancelModal(false)}
+        onConfirm={() => setIsCancelModal(false)}
+        title="Are you sure you want to Cancel the ride?"
+        message="Once canceled, you won't be able to recover this ride. Please confirm your action."
+        confirmLabel="Yes"
+        cancelLabel="No"
+      />
+      <VerifyRiderModal
+        isVisible={isModal}
+        onClose={() => setIsModal(false)}
+        onVerify={() => setIsModal(false)}
+      />
       {/* Top Distance Indicator */}
       <View style={styles.headerInfo}>
         <View style={styles.distanceRow}>
@@ -19,6 +38,17 @@ const RiderPickupCard = () => {
         <Text style={styles.subtext}>Picking up Tuval</Text>
       </View>
 
+      <View style={styles.actionRow}>
+        <View style={styles.timerBadge}>
+          <Text style={styles.timerText}>0:00</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => setIsCancelModal(true)}
+        >
+          <Text style={styles.cancelText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
       {/* Main Card */}
       <View style={styles.card}>
         <View style={styles.topSection}>
@@ -37,7 +67,12 @@ const RiderPickupCard = () => {
           </View>
 
           {/* Start Button */}
-          <TouchableOpacity style={styles.startButton}>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={() => {
+              setIsModal(true);
+            }}
+          >
             <Ionicons
               name="shield-checkmark"
               size={scale(20)}
@@ -81,7 +116,6 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     alignItems: "center",
-    marginBottom: verticalScale(15),
   },
   distanceRow: {
     flexDirection: "row",
@@ -115,7 +149,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: verticalScale(20),
+    marginBottom: verticalScale(15),
   },
   riderInfo: {
     flexDirection: "row",
@@ -144,7 +178,7 @@ const styles = StyleSheet.create({
     color: "#4B5563",
   },
   startButton: {
-    backgroundColor: "#1E0078",
+    backgroundColor: colors.main,
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: verticalScale(12),
@@ -177,6 +211,43 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1F2937",
   },
+  actionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: verticalScale(20),
+    marginBottom: verticalScale(25),
+    position: "relative",
+    width: "100%",
+    height: 1,
+    backgroundColor: "#E0E0E0",
+  },
+  timerBadge: {
+    width: scale(55),
+    height: scale(30),
+    position: "absolute",
+    backgroundColor: "#A5B4FC",
+    paddingHorizontal: scale(15),
+    paddingVertical: scale(5),
+    borderRadius: scale(8),
+    borderWidth: 1,
+    borderColor: colors.main,
+    left: 0,
+  },
+  timerText: {
+    color: colors.main,
+    fontWeight: "600",
+  },
+  cancelButton: {
+    position: "absolute",
+    width: scale(70),
+    backgroundColor: "#B91C1C",
+    paddingHorizontal: scale(15),
+    paddingVertical: scale(8),
+    borderRadius: scale(8),
+    right: 0,
+  },
+  cancelText: { color: "white", fontWeight: "600" },
 });
 
 export default RiderPickupCard;

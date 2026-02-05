@@ -8,6 +8,7 @@ interface ConfirmationModalProps {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -19,6 +20,7 @@ export default function ConfirmationModal({
   confirmLabel = "Delete",
   onClose,
   onConfirm,
+  cancelLabel = "Cancel",
 }: ConfirmationModalProps) {
   return (
     <Modal
@@ -47,7 +49,7 @@ export default function ConfirmationModal({
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>{cancelLabel}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.confirmButton} onPress={onConfirm}>

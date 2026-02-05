@@ -1,11 +1,16 @@
-import { MarkerCircle, MarkerTriangle, MarkerUser } from "@/components/Markers";
+import { MarkerCircle } from "@/components/AnimatedMarker";
+import { MarkerTriangle, MarkerUser } from "@/components/Markers";
+import NavigationCard from "@/components/NavigationCard";
+import RequestCard from "@/components/RequestCard";
 import RequiredActions from "@/components/RequiredActions";
 import RiderPickupCard from "@/components/RidePickupCard";
 import { colors } from "@/config/colors";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Image } from "expo-image";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Home01Icon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import Animated, {
@@ -23,45 +28,165 @@ const routeCoordinates = [
   { latitude: 32.785, longitude: -96.797 },
 ];
 
+const stripHtml = (html: string) => html.replace(/<[^>]+>/g, "");
+
 export default function HomeScreen() {
-  const [driverLocation, setDriverLocation] = useState<any>({
-    latitude: 32.78,
-    longitude: -96.8,
-  });
-  const [heading, setHeading] = useState<number>(0);
-  const [isEyeOpened, setIsEyeOpened] = useState(true);
   const mapRef = useRef<MapView | null>(null);
+
+  // Driver state
+  const [driverLocation, setDriverLocation] = useState(routeCoordinates[0]);
+  const [heading, setHeading] = useState(0);
+
+  // Navigation steps
+  const [steps, setSteps] = useState<any[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [arrived, setArrived] = useState(false);
+  const [isEyeOpened, setIsEyeOpened] = useState(true);
   const [isOffline, setisOffline] = useState(true);
   const [isRequest, setIsRequest] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
 
   // Reanimated shared value
   const eyeValue = useSharedValue(1);
-
   const toggleEye = () => {
     eyeValue.value = isEyeOpened ? 0 : 1;
     setIsEyeOpened(!isEyeOpened);
   };
-
   // Animated pill style
   const pillStyle = useAnimatedStyle(() => {
     return {
-      paddingHorizontal: withSpring(eyeValue.value ? 8 : 16, {
-        duration: 500,
-      }),
-      borderRadius: withTiming(eyeValue.value ? 30 : 100, {
-        duration: 200,
-      }),
+      paddingHorizontal: withSpring(eyeValue.value ? 8 : 16, { duration: 500 }),
+      borderRadius: withTiming(eyeValue.value ? 30 : 100, { duration: 200 }),
     };
   });
+  // Fetch directions from Google Directions API
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${routeCoordinates[0].latitude},${routeCoordinates[0].longitude}&destination=${routeCoordinates[2].latitude},${routeCoordinates[2].longitude}&key=${process.env.EXPO_PUBLIC_MAP_API_KEY}`,
+        );
+        const data = await res.json();
+        const routeSteps = data.routes[0].legs[0].steps;
+        setSteps(routeSteps);
+        setCurrentStepIndex(0);
+      } catch (err) {
+        console.log("Directions API error:", err);
+      }
+    })();
+  }, []);
+
+  // Track driver location
+  useEffect(() => {
+    let subscription: any;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 2,
+        },
+        (loc) => {
+          const newLocation = {
+            // latitude: loc.coords.latitude,
+            // longitude: loc.coords.longitude,
+            latitude: routeCoordinates[0].latitude,
+            longitude: routeCoordinates[0].longitude,
+          };
+          setDriverLocation(newLocation);
+          setHeading(loc.coords.heading || 0);
+
+          // Check if driver is near pickup
+          const pickup = routeCoordinates[2];
+          const distanceToPickup = getDistance(
+            newLocation.latitude,
+            newLocation.longitude,
+            pickup.latitude,
+            pickup.longitude,
+          );
+          if (distanceToPickup < 30) setArrived(true);
+
+          // Update current step
+          if (steps.length) {
+            const step = steps[currentStepIndex];
+            const end = step.end_location;
+            const distToStepEnd = getDistance(
+              newLocation.latitude,
+              newLocation.longitude,
+              end.lat,
+              end.lng,
+            );
+            if (distToStepEnd < 15 && currentStepIndex < steps.length - 1) {
+              setCurrentStepIndex((prev) => prev + 1);
+            }
+          }
+        },
+      );
+    })();
+
+    return () => subscription?.remove();
+  }, [steps, currentStepIndex]);
 
   return (
     <View style={styles.mainContainer}>
+      {/* Top Controlls */}
+      <View style={styles.topControls}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => router.replace("/(protected)/(tab)")}
+        >
+          <HugeiconsIcon
+            icon={Home01Icon}
+            size={scale(24)}
+            color={colors.main}
+          />
+        </TouchableOpacity>
+        {/* Reanimated Wallet Pill */}
+        <Animated.View style={[styles.walletPill, pillStyle]}>
+          {!isEyeOpened && (
+            <View style={[{ flexDirection: "row", alignItems: "center" }]}>
+              <Text style={styles.walletText} numberOfLines={1}>
+                <Text style={{ color: "#FFD283" }}>USD</Text> 0.00
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.walletIconCircle}
+            onPress={toggleEye}
+            activeOpacity={0.8}
+          >
+            <HugeiconsIcon
+              icon={isEyeOpened ? ViewOffIcon : ViewIcon}
+              size={scale(16)}
+              color="#FFD700"
+            />
+          </TouchableOpacity>
+        </Animated.View>
+        <View style={{ width: scale(40) }} />
+      </View>
+      {/* Navigation card */}
+      <NavigationCard
+        distance={steps[currentStepIndex]?.distance?.text || "0.0 mi"}
+        roadName={
+          steps[currentStepIndex]
+            ? stripHtml(steps[currentStepIndex].html_instructions).replace(
+                /Turn.*onto /,
+                "",
+              )
+            : "Unknown"
+        }
+        pickupLocation="Gulshan 1 DNCC Market"
+        maneuver={steps[currentStepIndex]?.maneuver || "straight"}
+        arrived={arrived}
+      />
+      {/* Map */}
       <MapView
         ref={mapRef}
         style={styles.map}
         showsUserLocation={false}
-        showsMyLocationButton={true}
+        showsMyLocationButton
         initialRegion={{
           latitude: 32.78,
           longitude: -96.8,
@@ -74,17 +199,26 @@ export default function HomeScreen() {
           strokeWidth={5}
           strokeColor="#6366F1"
         />
-        {driverLocation && (
-          <Marker
-            coordinate={routeCoordinates[0]}
-            anchor={{ x: 0.5, y: 0.5 }}
-            flat
-            rotation={heading}
-          >
-            <MarkerCircle />
-          </Marker>
-        )}
 
+        {/* Driver marker */}
+        {/* <Marker
+          tracksViewChanges={true}
+          coordinate={driverLocation}
+          anchor={{ x: 0.5, y: 0.5 }}
+          flat
+          rotation={heading}
+        >
+          <MarkerCircle />
+        </Marker> */}
+        <MarkerCircle
+          tracksViewChanges={true}
+          coordinate={driverLocation}
+          anchor={{ x: 0.5, y: 0.5 }}
+          flat
+          rotation={heading}
+        />
+
+        {/* Destination / pickup */}
         <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={routeCoordinates[3]}>
           <MarkerTriangle />
         </Marker>
@@ -92,45 +226,6 @@ export default function HomeScreen() {
           <MarkerUser />
         </Marker>
       </MapView>
-
-      <View style={styles.topControls}>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => router.replace("/(protected)/(tab)")}
-        >
-          <Image
-            source={require("@/assets/icons/home.svg")}
-            style={{ width: scale(24), height: scale(24) }}
-            contentFit="contain"
-          />
-        </TouchableOpacity>
-
-        {/* Reanimated Wallet Pill */}
-        <Animated.View style={[styles.walletPill, pillStyle]}>
-          {!isEyeOpened && (
-            <View style={[{ flexDirection: "row", alignItems: "center" }]}>
-              <Text style={styles.walletText} numberOfLines={1}>
-                <Text style={{ color: "#FFD283" }}>USD</Text> 0.00
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity
-            style={styles.walletIconCircle}
-            onPress={toggleEye}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={isEyeOpened ? "eye-off" : "eye"}
-              size={scale(16)}
-              color="#FFD700"
-            />
-          </TouchableOpacity>
-        </Animated.View>
-
-        <View style={{ width: scale(40) }} />
-      </View>
-
       {/* Center Floating "Go Online" Button */}
       <View style={styles.onlineButtonWrapper}>
         <TouchableOpacity
@@ -148,7 +243,6 @@ export default function HomeScreen() {
           <Text style={styles.goOnlineText}>Go Online</Text>
         </TouchableOpacity>
       </View>
-
       {/* Bottom Status Sheets */}
       <View style={styles.bottomSheet}>
         <View style={styles.handle} />
@@ -160,72 +254,16 @@ export default function HomeScreen() {
           </>
         )}
         {/* Offline Sheet */}
-
         {/* Ride Request Card */}
         {isRequest && (
-          <View style={styles.requestCard}>
-            <TouchableOpacity style={styles.closeButton}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-
-            <Text style={styles.serviceType}>PREMIUM VAN (COMPACT)</Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceText}>$5.54</Text>
-            </View>
-
-            <View style={styles.ratingBadge}>
-              <Ionicons name="person-circle" size={20} color="#CCC" />
-              <View style={styles.starBadge}>
-                <Ionicons name="star" size={12} color="#FFD700" />
-                <Text style={styles.ratingText}>4.5</Text>
-              </View>
-            </View>
-
-            <View style={styles.locationContainer}>
-              <View style={styles.locationRow}>
-                <Ionicons name="radio-button-on" size={20} color="#6366F1" />
-                <View style={styles.locationInfo}>
-                  <Text style={styles.distanceText}>
-                    Pickup location 1.2 mi away
-                  </Text>
-                  <Text style={styles.addressText}>
-                    Brac University Building 5
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.dashLine} />
-
-              <View style={styles.locationRow}>
-                <Ionicons name="location" size={20} color="#6366F1" />
-                <View style={styles.locationInfo}>
-                  <Text style={styles.distanceText}>
-                    Dropoff location 2.1 mi away
-                  </Text>
-                  <Text style={styles.addressText}>Gulshan 1 DNCC Market</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.infoBox}>
-              <Ionicons name="alert-circle-outline" size={18} color="#10B981" />
-              <Text style={styles.infoText}>
-                You will get 60% of the total fare.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.acceptButton}
-              onPress={() => {
-                setIsRequest(false);
-                setIsAccepted(true);
-              }}
-            >
-              <Text style={styles.acceptButtonText}>Accept</Text>
-            </TouchableOpacity>
-          </View>
+          <RequestCard
+            onAccept={() => {
+              setIsRequest(false);
+              setIsAccepted(true);
+            }}
+          />
         )}
-        {/* Ride Request Card  */}
+        {/* Ride Request Card */}
         {/* Accepted Ride */}
         {isAccepted && <RiderPickupCard />}
         {/* Accepted Ride */}
@@ -234,18 +272,34 @@ export default function HomeScreen() {
   );
 }
 
+// Distance function (meters)
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
 const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   map: { ...StyleSheet.absoluteFillObject },
   topControls: {
     position: "absolute",
-    top: verticalScale(50),
+    top: verticalScale(30),
     left: 0,
     right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: scale(20),
+    zIndex: 10,
   },
   iconButton: {
     backgroundColor: "white",
@@ -307,6 +361,11 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(40),
     paddingHorizontal: scale(20),
     alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   handle: {
     width: scale(40),
@@ -322,84 +381,4 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: scale(15),
   },
-
-  // Request Card Styles
-  requestCard: {
-    position: "absolute",
-    bottom: scale(20),
-    left: scale(15),
-    right: scale(15),
-    backgroundColor: "white",
-    borderRadius: scale(20),
-    padding: scale(20),
-    elevation: 10,
-  },
-  closeButton: {
-    position: "absolute",
-    right: 15,
-    top: 15,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 10,
-    padding: 5,
-  },
-  serviceType: {
-    fontSize: moderateScale(12),
-    color: "#666",
-    fontWeight: "600",
-  },
-  priceRow: {
-    paddingVertical: 5,
-  },
-  priceText: { fontSize: moderateScale(32), fontWeight: "800", color: "#111" },
-  ratingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 15,
-  },
-  starBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    gap: 4,
-  },
-  ratingText: { fontWeight: "700", fontSize: 12 },
-
-  locationContainer: {
-    backgroundColor: "#F9FAFB",
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 15,
-  },
-  locationRow: { flexDirection: "row", gap: 12 },
-  locationInfo: { flex: 1 },
-  distanceText: { fontSize: 11, color: "#9CA3AF" },
-  addressText: { fontSize: 13, fontWeight: "700", color: "#374151" },
-  dashLine: {
-    height: 20,
-    width: 1,
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "#DDD",
-    marginLeft: 10,
-    marginVertical: 2,
-  },
-
-  infoBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 20,
-  },
-  infoText: { color: "#10B981", fontSize: 13, fontWeight: "500" },
-  acceptButton: {
-    backgroundColor: "#1E0078",
-    paddingVertical: 15,
-    borderRadius: 15,
-    alignItems: "center",
-  },
-  acceptButtonText: { color: "white", fontWeight: "700", fontSize: 18 },
 });
