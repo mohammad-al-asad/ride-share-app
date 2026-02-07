@@ -5,10 +5,10 @@ import * as Location from "expo-location";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import { MarkerCircle } from "./AnimatedMarker";
 import AuthBackground from "./AuthBackground";
-import { MarkerCircle } from "./Markers";
 import RequiredActions from "./RequiredActions";
 
 export default function HomeScreen() {
@@ -23,39 +23,37 @@ export default function HomeScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
 
-      // const currentLocation = await Location.getCurrentPositionAsync({});
-      // setDriverLocation({
-      //   latitude: currentLocation.coords.latitude,
-      //   longitude: currentLocation.coords.longitude,
-      // });
-      setDriverLocation({
-        latitude: 32.78,
-        longitude: -96.8,
-      });
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 0,
+          distanceInterval: 0,
+        },
+        (location) => {
+          const { latitude, longitude, heading } = location.coords;
 
-      // subscription = await Location.watchPositionAsync(
-      //   {
-      //     accuracy: Location.Accuracy.High,
-      //     timeInterval: 2000,
-      //     distanceInterval: 2,
-      //   },
-      //   (location) => {
-      //     const { latitude, longitude, heading } = location.coords;
+          setDriverLocation({ latitude, longitude });
+          // setDriverLocation({
+          //   latitude: 32.78,
+          //   longitude: -96.8,
+          // });
+          setHeading(heading || 0);
 
-      //     setDriverLocation({ latitude, longitude });
-      // setHeading(heading || 0);
-
-      //     mapRef.current?.animateCamera({
-      //       center: { latitude, longitude },
-      //       zoom: 17,
-      //     });
-      //   },
-      // );
+          mapRef.current?.animateCamera({
+            center: { latitude, longitude },
+            // center: {
+            //   latitude: 32.78,
+            //   longitude: -96.8,
+            // },
+            zoom: 17,
+          });
+        },
+      );
     })();
 
-    // return () => {
-    //   subscription?.remove();
-    // };
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   return (
@@ -88,7 +86,7 @@ export default function HomeScreen() {
             ref={mapRef}
             style={styles.map}
             showsUserLocation={false}
-            showsMyLocationButton={true}
+            userInterfaceStyle="light"
             initialRegion={{
               latitude: 32.78,
               longitude: -96.8,
@@ -97,14 +95,13 @@ export default function HomeScreen() {
             }}
           >
             {driverLocation && (
-              <Marker
+              <MarkerCircle
                 coordinate={driverLocation}
                 anchor={{ x: 0.5, y: 0.5 }}
                 flat
                 rotation={heading}
-              >
-                <MarkerCircle />
-              </Marker>
+                tracksViewChanges={true}
+              />
             )}
           </MapView>
           <TouchableOpacity

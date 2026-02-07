@@ -18,6 +18,7 @@ export default function NavigationCard({
   maneuver,
   arrived,
 }: Props) {
+  
   const renderIcon = () => {
     switch (maneuver) {
       case "turn-left":
@@ -58,7 +59,9 @@ export default function NavigationCard({
 
         <View style={styles.directionRow}>
           {renderIcon()}
-          <Text style={styles.roadText}>{roadName}</Text>
+          <Text numberOfLines={2} ellipsizeMode="tail" style={styles.roadText}>
+            {roadName}
+          </Text>
         </View>
       </View>
       <View style={styles.line} />
@@ -76,14 +79,14 @@ export default function NavigationCard({
 const styles = StyleSheet.create({
   card: {
     position: "absolute",
-    top: verticalScale(30),
+    top: verticalScale(35),
     alignSelf: "center",
     width: "90%",
     backgroundColor: colors.main,
     padding: scale(16),
     borderRadius: scale(14),
     elevation: 6,
-    height: verticalScale(130),
+    minHeight: verticalScale(130),
     zIndex: 20,
   },
   row: {
@@ -114,6 +117,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: moderateScale(18),
     fontWeight: "600",
+    width: "90%",
   },
 
   bottomRow: {

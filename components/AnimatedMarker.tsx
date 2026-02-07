@@ -21,7 +21,7 @@ export const MarkerCircle = ({ ...props }) => {
         easing: Easing.out(Easing.ease),
       }),
       -1,
-      false,
+      true,
     );
   }, []);
 
@@ -37,7 +37,7 @@ export const MarkerCircle = ({ ...props }) => {
   });
 
   return (
-    <Marker.Animated {...props}>
+    <Marker.Animated coordinate={props.coordinates} {...props}>
       <View style={styles.container}>
         {/* Pulsing Ring */}
         <Animated.View style={[styles.pulseRing, pulseStyle]} />
@@ -63,15 +63,15 @@ const styles = StyleSheet.create({
   },
   pulseRing: {
     position: "absolute",
-    width: 40,
-    height: 40,
+    width: 30,
+    height: 30,
     borderRadius: 20,
     backgroundColor: "#6662FF",
   },
   outerCircle: {
     position: "absolute",
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     borderRadius: 40,
     backgroundColor: "rgba(69, 0, 255, 0.15)",
     borderWidth: 1,

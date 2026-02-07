@@ -30,8 +30,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-SplashScreen.hideAsync();
-
 export default function App() {
   const [fontsLoaded] = useFonts({
     Trispace_700Bold,
@@ -49,21 +47,22 @@ export default function App() {
     dispatch(loadCredentials());
     setTimeout(() => {
       if (isAuthenticated) router.replace("/(protected)/(tab)");
-    }, 2000);
+    }, 2500);
   }, [isAuthenticated]);
 
   useEffect(() => {
     if (fontsLoaded) {
+      SplashScreen.hideAsync();
       stage.value = withDelay(
-        100,
+        1000,
         withTiming(
           1,
-          { duration: 100, easing: Easing.out(Easing.cubic) },
+          { duration: 200, easing: Easing.out(Easing.cubic) },
           () => {
             stage.value = withDelay(
-              2000,
+              3000,
               withTiming(2, {
-                duration: 100,
+                duration: 0,
                 easing: Easing.out(Easing.cubic),
               }),
             );
@@ -87,16 +86,15 @@ export default function App() {
   const logoStyle = useAnimatedStyle(() => ({
     opacity:
       stage.value === 0
-        ? withTiming(0)
+        ? 0
         : stage.value === 1
-          ? withTiming(1)
-          : 0.3,
-    transform: [{ scale: stage.value < 2 ? 1 : withTiming(3) }],
-    position: stage.value > 1 ? (withTiming("absolute") as any) : "relative",
+          ? withTiming(1, { duration: 1000 })
+          : withTiming(0.3),
+    transform: [{ scale: stage.value !== 2 ? 1 : withTiming(3) }],
+    position: stage.value > 1 ? "absolute" : "relative",
     width: 220,
     height: 150,
-    top: stage.value === 2 ? withTiming(170) : 0,
-    // marginTop: stage.value === 2 ? 0 : 150,
+    top: stage.value === 2 ? 280 : 0,
   }));
 
   const ma3Style = useAnimatedStyle(() => ({
@@ -109,29 +107,23 @@ export default function App() {
   }));
 
   const sloganStyle = useAnimatedStyle(() => ({
-    opacity: stage.value > 0 ? withTiming(1, { duration: 2000 }) : 0,
+    opacity: stage.value === 0 ? 0 : withTiming(1, { duration: 1000 }),
     color: stage.value === 2 ? withTiming(colors.main) : "#FFD700",
     textAlign: "center",
     marginTop: stage.value === 2 ? 0 : 10,
   }));
 
   const buttonStyle = useAnimatedStyle(() => ({
-    opacity: stage.value === 2 ? withTiming(1) : 0,
+    opacity: stage.value === 2 ? withTiming(1, { duration: 1000 }) : 0,
     transform: [
-      { translateY: stage.value === 2 ? withTiming(0) : withTiming(50) },
+      {
+        translateY:
+          stage.value === 2
+            ? withTiming(0, { duration: 1000 })
+            : withTiming(50),
+      },
     ],
   }));
-
-  // useAnimatedReaction(
-  //   () => stage.value,
-  //   (currentStage) => {
-  //     if (currentStage === 2 && isAuthenticated === "true") {
-  //       // runOnJS(() => {
-  //       //   console.log("gotcha",currentStage,isAuthenticated);
-  //       // })();
-  //     }
-  //   },
-  // );
 
   if (!fontsLoaded) return null;
 

@@ -223,7 +223,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#E0E0E0",
   },
   timerBadge: {
-    width: scale(55),
     height: scale(30),
     position: "absolute",
     backgroundColor: "#A5B4FC",
@@ -240,7 +239,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     position: "absolute",
-    width: scale(70),
     backgroundColor: "#B91C1C",
     paddingHorizontal: scale(15),
     paddingVertical: scale(8),

@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icons/App-icon.png",
     "scheme": "ridingapp",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -80,13 +80,11 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo-golden.png",
+          "image": "",
+          "backgroundColor": "#240183",
+          "hideStatusBar": true,
           "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "resizeMode": "contain"
         }
       ],
       "expo-font",

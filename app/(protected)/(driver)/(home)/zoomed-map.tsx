@@ -6,19 +6,10 @@ import RequiredActions from "@/components/RequiredActions";
 import RiderPickupCard from "@/components/RidePickupCard";
 import { colors } from "@/config/colors";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Home01Icon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react-native";
 import * as Location from "expo-location";
-import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const routeCoordinates = [
@@ -41,24 +32,10 @@ export default function HomeScreen() {
   const [steps, setSteps] = useState<any[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
-  const [isEyeOpened, setIsEyeOpened] = useState(true);
   const [isOffline, setisOffline] = useState(true);
   const [isRequest, setIsRequest] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
 
-  // Reanimated shared value
-  const eyeValue = useSharedValue(1);
-  const toggleEye = () => {
-    eyeValue.value = isEyeOpened ? 0 : 1;
-    setIsEyeOpened(!isEyeOpened);
-  };
-  // Animated pill style
-  const pillStyle = useAnimatedStyle(() => {
-    return {
-      paddingHorizontal: withSpring(eyeValue.value ? 8 : 16, { duration: 500 }),
-      borderRadius: withTiming(eyeValue.value ? 30 : 100, { duration: 200 }),
-    };
-  });
   // Fetch directions from Google Directions API
   useEffect(() => {
     (async () => {
@@ -86,7 +63,8 @@ export default function HomeScreen() {
       subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          distanceInterval: 2,
+          distanceInterval: 0,
+          timeInterval: 0,
         },
         (loc) => {
           const newLocation = {
@@ -132,40 +110,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.mainContainer}>
       {/* Top Controlls */}
-      <View style={styles.topControls}>
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={() => router.replace("/(protected)/(tab)")}
-        >
-          <HugeiconsIcon
-            icon={Home01Icon}
-            size={scale(24)}
-            color={colors.main}
-          />
-        </TouchableOpacity>
-        {/* Reanimated Wallet Pill */}
-        <Animated.View style={[styles.walletPill, pillStyle]}>
-          {!isEyeOpened && (
-            <View style={[{ flexDirection: "row", alignItems: "center" }]}>
-              <Text style={styles.walletText} numberOfLines={1}>
-                <Text style={{ color: "#FFD283" }}>USD</Text> 0.00
-              </Text>
-            </View>
-          )}
-          <TouchableOpacity
-            style={styles.walletIconCircle}
-            onPress={toggleEye}
-            activeOpacity={0.8}
-          >
-            <HugeiconsIcon
-              icon={isEyeOpened ? ViewOffIcon : ViewIcon}
-              size={scale(16)}
-              color="#FFD700"
-            />
-          </TouchableOpacity>
-        </Animated.View>
-        <View style={{ width: scale(40) }} />
-      </View>
+
       {/* Navigation card */}
       <NavigationCard
         distance={steps[currentStepIndex]?.distance?.text || "0.0 mi"}
@@ -185,6 +130,7 @@ export default function HomeScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
+        userInterfaceStyle="light"
         showsUserLocation={false}
         showsMyLocationButton
         initialRegion={{
@@ -201,15 +147,6 @@ export default function HomeScreen() {
         />
 
         {/* Driver marker */}
-        {/* <Marker
-          tracksViewChanges={true}
-          coordinate={driverLocation}
-          anchor={{ x: 0.5, y: 0.5 }}
-          flat
-          rotation={heading}
-        >
-          <MarkerCircle />
-        </Marker> */}
         <MarkerCircle
           tracksViewChanges={true}
           coordinate={driverLocation}
