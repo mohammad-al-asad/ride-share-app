@@ -40,7 +40,7 @@ export default function Layout() {
         }}
       />
       <Stack.Screen
-        name="select-car"
+        name="book-map"
         options={{
           headerShown: false,
         }}

@@ -1,5 +1,6 @@
 import { colors } from "@/config/colors";
 import { Entypo, Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
@@ -8,6 +9,17 @@ export const MarkerUser = () => {
   return (
     <View style={styles.markerUser}>
       <Ionicons name="man" size={20} color="white" />
+    </View>
+  );
+};
+export const MarkerCar = () => {
+  return (
+    <View style={styles.markerCar}>
+      <Image
+        style={{ height: 40, width: 50 }}
+        contentFit="contain"
+        source={require("@/assets/images/cars/markerCar.svg")}
+      />
     </View>
   );
 };
@@ -44,6 +56,10 @@ const styles = StyleSheet.create({
     borderRadius: 200,
     borderWidth: 2,
     borderColor: colors.main,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  markerCar: {
     justifyContent: "center",
     alignItems: "center",
   },

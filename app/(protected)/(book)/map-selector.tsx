@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     width: scale(8),
     height: scale(8),
     borderRadius: scale(4),
-    backgroundColor: '#240183', // Primary purple
+    backgroundColor: colors.main, // Primary purple
   },
   addressText: {
     fontSize: moderateScale(14),
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   confirmButton: {
-    backgroundColor: '#240183', // Deep purple from UI
+    backgroundColor: colors.main, // Deep purple from UI
     width: '100%',
     height: verticalScale(50),
     borderRadius: scale(12),
@@ -137,6 +137,6 @@ const styles = StyleSheet.create({
     borderRadius: scale(15),
     backgroundColor: 'rgba(36, 1, 131, 0.2)',
     borderWidth: 2,
-    borderColor: '#240183',
+    borderColor: colors.main,
   }
 });

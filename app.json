@@ -80,7 +80,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "",
+          "image": "./assets/images/splash.png",
           "backgroundColor": "#240183",
           "hideStatusBar": true,
           "imageWidth": 200,

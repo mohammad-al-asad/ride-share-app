@@ -1,8 +1,11 @@
 import { colors } from "@/config/colors";
 import { Ionicons } from "@expo/vector-icons";
+import { Gps01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -12,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
+import { ActivityIndicator } from "react-native-paper";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const pickupOptions = [
@@ -19,49 +23,102 @@ const pickupOptions = [
   { label: "Pickup later", value: "later", icon: "calendar-outline" },
 ];
 
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_MAP_API_KEY;
+
 export default function LocationSelectionScreen() {
   const [pickupType, setPickupType] = useState("now");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [pickUpLocation, setPickUpLocation] = useState("");
+  const [dropOffLocation, setDropOffLocation] = useState("");
+  const [pickUpText, setPickUpText] = useState("");
+  const [dropOffText, setDropOffText] = useState("");
+  const [currentInput, setCurrentInput] = useState<"pickup" | "dropoff">(
+    "dropoff",
+  );
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
 
-  const RECENT_LOCATIONS = [
-    {
-      id: "1",
-      name: "Hazrat Shahjalal International Airport",
-      address: "Airport - Dakshinkhan Rd, Dhaka",
-      distance: "34.4 km",
-    },
-    {
-      id: "2",
-      name: "Hazrat Shahjalal International Airport",
-      address: "Airport - Dakshinkhan Rd, Dhaka",
-      distance: "34.4 km",
-    },
-  ];
+  // Auto-navigate when both are filled
+  useEffect(() => {
+    if (pickUpLocation && dropOffLocation) {
+      router.push("/(protected)/(book)/choose-time");
+    }
+  }, [pickUpLocation, dropOffLocation]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimer) clearTimeout(searchTimer);
+    };
+  }, [searchTimer]);
+
+  // Debounced Search Logic
+  const debouncedSearch = (text: string) => {
+    if (searchTimer) clearTimeout(searchTimer);
+
+    if (text.length > 1) {
+      const timer = setTimeout(() => {
+        performSearch(text);
+      }, 500); // 500ms delay
+      setSearchTimer(timer as any);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const performSearch = async (text: string) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+          text,
+        )}&key=${GOOGLE_MAPS_API_KEY}&types=geocode`,
+      );
+      const json = await response.json();
+      setSearchResults(json?.predictions || []);
+    } catch (error) {
+      console.error(error);
+      setSearchResults([]);
+    }
+  };
 
   const getCurrentLocation = async () => {
+    setGettingLocation(true);
     let { status } = await Location.requestForegroundPermissionsAsync();
-    console.log(status);
     if (status !== "granted") {
+      setGettingLocation(false);
       alert("Permission to access location was denied");
       return;
     }
 
-    const isEnabled = await Location.hasServicesEnabledAsync();
-    console.log(isEnabled);
+    try {
+      const location = await Location.getCurrentPositionAsync({});
+      const [address] = await Location.reverseGeocodeAsync(location.coords);
+      const formattedAddress =
+        `${address?.name || ""} ${address?.street || ""}`.trim();
 
-    if (!isEnabled) {
-      alert("Please enable location services on your device.");
-      return;
+      setPickUpLocation(formattedAddress);
+      setPickUpText(formattedAddress);
+    } catch (error) {
+      console.error(error);
     }
-
-    let location = await Location.getCurrentPositionAsync({});
-    console.log(location.coords); // { latitude, longitude }
-
-    // Optionally reverse geocode to get an address
-    let [address] = await Location.reverseGeocodeAsync(location.coords);
-    console.log(address);
+    setGettingLocation(false);
   };
 
-  // Helper to render the dropdown item design
+  const handleLocationSelect = (item: any) => {
+    const mainText =
+      item?.structured_formatting?.main_text || item?.description || "";
+    const fullDescription = item?.description || "";
+
+    if (currentInput === "pickup") {
+      setPickUpLocation(mainText);
+      setPickUpText(fullDescription);
+    } else {
+      setDropOffLocation(mainText);
+      setDropOffText(fullDescription);
+    }
+    setSearchResults([]);
+  };
+
   const renderItem = (item: any) => {
     return (
       <View style={styles.itemContainer}>
@@ -70,6 +127,7 @@ export default function LocationSelectionScreen() {
           size={moderateScale(18)}
           color={colors.main}
         />
+
         <Text style={styles.itemText}>{item.label}</Text>
       </View>
     );
@@ -77,7 +135,6 @@ export default function LocationSelectionScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Responsive Pickup Timing Dropdown */}
       <Dropdown
         style={styles.dropdown}
         placeholderStyle={styles.pickupNowText}
@@ -108,77 +165,117 @@ export default function LocationSelectionScreen() {
         containerStyle={styles.dropdownListContainer}
       />
 
-      {/* Input Group */}
       <View style={styles.inputCard}>
+        {/* Pickup Input */}
         <View style={styles.inputRow}>
-          <Ionicons
-            name="search-outline"
-            size={moderateScale(20)}
-            color="#666"
-          />
+          {pickUpLocation ? (
+            <Image
+              style={{ height: 20, width: 20 }}
+              source={require("@/assets/icons/selectedAddress.svg")}
+            />
+          ) : (
+            <Ionicons name="search-outline" size={20} color="#666" />
+          )}
+
           <TextInput
             placeholder="Pickup Location"
             style={styles.input}
-            placeholderTextColor="#999"
+            value={pickUpText}
+            onChangeText={(text: string) => {
+              setCurrentInput("pickup");
+              setPickUpText(text);
+              if (text === "" || text.length < pickUpText.length) {
+                setPickUpLocation("");
+                setSearchResults([]);
+              } else {
+                debouncedSearch(text);
+              }
+            }}
           />
         </View>
 
         <View style={styles.divider} />
 
+        {/* Dropoff Input */}
         <View style={styles.inputRow}>
-          <Ionicons
-            name="search-outline"
-            size={moderateScale(20)}
-            color="#666"
-          />
+          {dropOffLocation ? (
+            <Image
+              style={{ height: 20, width: 20 }}
+              source={require("@/assets/icons/selectedAddress.svg")}
+            />
+          ) : (
+            <Ionicons name="search-outline" size={20} color="#666" />
+          )}
           <TextInput
             placeholder="Dropoff location"
             style={styles.input}
-            placeholderTextColor="#999"
+            value={dropOffText}
+            onChangeText={(text: string) => {
+              setCurrentInput("dropoff");
+              setDropOffText(text);
+              if (text === "" || text.length < dropOffText.length) {
+                setDropOffLocation(""); // Clear state when text is cleared
+                setSearchResults([]);
+              } else {
+                debouncedSearch(text);
+              }
+            }}
           />
         </View>
       </View>
 
-      <View
-        style={{
-          backgroundColor: "#F4F4F6",
-          marginBottom: scale(10),
-          borderRadius: 12,
-        }}
-      >
-        <FlatList
-          data={RECENT_LOCATIONS}
-          keyExtractor={(item: any) => item.id}
-          renderItem={({ item }: { item: any }) => (
-            <TouchableOpacity style={styles.locationItem}>
-              <View style={styles.timeIconContainer}>
-                <Ionicons name="time-outline" size={24} color="#333" />
-                <Text style={styles.distance}>{item.distance}</Text>
-              </View>
-              <View style={styles.locationTextContainer}>
-                <Text style={styles.locationName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.locationAddress} numberOfLines={1}>
-                  {item.address}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
+      {/* Search Results List */}
+      {searchResults.length > 0 && (
+        <View style={styles.listWrapper}>
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item: any) => item.place_id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.locationItem}
+                onPress={() => handleLocationSelect(item)}
+              >
+                <View style={styles.timeIconContainer}>
+                  <Ionicons name="location-outline" size={22} color="#333" />
+                </View>
+
+                <View style={styles.locationTextContainer}>
+                  <Text style={styles.locationName} numberOfLines={1}>
+                    {item?.structured_formatting?.main_text ||
+                      item?.description}
+                  </Text>
+                  <Text style={styles.locationAddress} numberOfLines={1}>
+                    {item?.structured_formatting?.secondary_text}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      )}
 
       {/* Action Buttons */}
       <TouchableOpacity
         style={styles.actionButton}
         onPress={getCurrentLocation}
+        disabled={gettingLocation}
       >
-        <Ionicons
-          name="locate-outline"
-          size={moderateScale(20)}
-          color={colors.main}
-        />
-        <Text style={styles.actionButtonText}>Current location</Text>
+        {gettingLocation ? (
+          <ActivityIndicator
+            size="small"
+            color={colors.main}
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <>
+            <HugeiconsIcon
+              icon={Gps01Icon}
+              size={moderateScale(20)}
+              color={colors.main}
+            />
+            <Text style={styles.actionButtonText}>Current location</Text>
+          </>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -200,7 +297,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#E5E5E5",
-    paddingHorizontal: scale(20),
+    paddingHorizontal: scale(10),
     paddingTop: verticalScale(20),
   },
   dropdown: {
@@ -216,6 +313,7 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(2),
     overflow: "hidden",
   },
+
   itemContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -227,69 +325,38 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "500",
   },
-  pickupNowText: {
-    color: colors.main,
-    fontWeight: "600",
-    fontSize: moderateScale(13),
-  },
-  locationItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 15,
-    borderRadius: 12,
-  },
-  timeIconContainer: {
-    width: 50,
-    height: 40,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  locationTextContainer: {
-    flex: 1,
-  },
-  locationName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 2,
-  },
-  distance: {
-    fontSize: 12,
-    color: "#666",
-  },
-  locationAddress: {
-    fontSize: 13,
-    color: "#666",
-  },
-
   inputCard: {
     backgroundColor: "white",
     borderRadius: scale(12),
     borderWidth: 2,
     borderColor: "#dad6ffc7",
     marginBottom: verticalScale(10),
-    overflow: "hidden",
+    zIndex: 5,
   },
+  input: { flex: 1, fontSize: moderateScale(14) },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: scale(15),
-    height: verticalScale(45),
+    minHeight: verticalScale(50),
     gap: scale(10),
   },
-  input: {
-    flex: 1,
-    fontSize: moderateScale(14),
-    color: "#333",
-  },
   divider: {
-    height: 3,
-    width: "100%",
+    height: 1.5,
     backgroundColor: "#DAD6FF",
-    marginHorizontal: scale(5),
+    marginHorizontal: scale(15),
   },
+  listWrapper: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    marginBottom: scale(10),
+    maxHeight: verticalScale(324),
+  },
+  locationItem: { flexDirection: "row", alignItems: "center", padding: 15 },
+  timeIconContainer: { width: 40, alignItems: "center" },
+  locationTextContainer: { flex: 1 },
+  locationName: { fontSize: 15, fontWeight: "600", color: "#262626" },
+  locationAddress: { fontSize: 13, color: "#666" },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -301,8 +368,13 @@ const styles = StyleSheet.create({
     marginBottom: scale(10),
   },
   actionButtonText: {
-    color: "#1A1A1A",
+    color: "#1A1A11",
     fontSize: moderateScale(14),
     fontWeight: "500",
+  },
+  pickupNowText: {
+    color: colors.main,
+    fontWeight: "600",
+    fontSize: moderateScale(13),
   },
 });

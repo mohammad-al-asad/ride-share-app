@@ -131,7 +131,6 @@ export default function SchedulePickupScreen() {
             display={Platform.OS === "ios" ? "inline" : "default"}
             onChange={onDateChange}
             accentColor={colors.main}
-            
           />
         )}
 
@@ -154,7 +153,7 @@ export default function SchedulePickupScreen() {
             text="Next"
             onClick={() => {
               console.log("Final Selection:", { pickupDate, dropoffDate });
-              router.push("/(protected)/(book)/select-car");
+              router.push("/(protected)/(book)/book-map");
             }}
           />
         </View>
