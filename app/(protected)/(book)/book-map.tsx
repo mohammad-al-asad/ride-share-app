@@ -1,16 +1,18 @@
 import { MarkerCircle } from "@/components/AnimatedMarker";
 import CarSelection from "@/components/CarSelection";
 import { MarkerCar, MarkerTriangle } from "@/components/Markers";
-import PaymentScreen from "@/components/PaymentCard";
 import { Ionicons } from "@expo/vector-icons";
+import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import React, { useRef } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
 import { scale, verticalScale } from "react-native-size-matters";
+const { height } = Dimensions.get("window");
 
 export default function ChooseRideScreen() {
   const mapRef = useRef<MapView | null>(null);
+  const bottomSheetRef = useRef<BottomSheet | null>(null);
 
   return (
     <View style={styles.mainContainer}>
@@ -59,11 +61,25 @@ export default function ChooseRideScreen() {
       </TouchableOpacity>
 
       {/* Choose Ride Bottom Sheet */}
-      <View style={styles.bottomSheet}>
-        <View style={styles.handle} />
-        {/* <CarSelection /> */}
-        <PaymentScreen />
-      </View>
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={1}
+        snapPoints={[height * 0.06, height * 0.6]}
+        enableDynamicSizing={false}
+        activeOffsetY={[0, 1]}
+        enablePanDownToClose={false}
+        handleIndicatorStyle={{
+          backgroundColor: "#ccc",
+          width: scale(50),
+          height: 8,
+          marginTop: verticalScale(4),
+        }}
+      >
+        <BottomSheetView style={styles.bottomSheet}>
+          <CarSelection />
+          {/* <PaymentScreen /> */}
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }
@@ -85,19 +101,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   bottomSheet: {
-    minHeight: verticalScale(340),
-    backgroundColor: "white",
-    borderTopLeftRadius: scale(25),
-    borderTopRightRadius: scale(25),
-    marginTop: "auto",
+    flex: 1,
     paddingHorizontal: scale(20),
-  },
-  handle: {
-    width: scale(40),
-    height: scale(4),
-    backgroundColor: "#E0E0E0",
-    borderRadius: 10,
-    alignSelf: "center",
-    marginVertical: scale(15),
+    paddingTop: verticalScale(20),
   },
 });

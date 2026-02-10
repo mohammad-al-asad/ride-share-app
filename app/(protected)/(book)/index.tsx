@@ -280,7 +280,7 @@ export default function LocationSelectionScreen() {
 
       <TouchableOpacity
         style={styles.actionButton}
-        onPress={() => router.push("/(protected)/(book)/choose-time")}
+        onPress={() => router.push("/(protected)/(book)/confirm-pickup")}
       >
         <Ionicons
           name="location-outline"

@@ -1,14 +1,9 @@
 import CustomButton from "@/components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import React, { useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 // Mock Data for the Ride List
@@ -192,7 +187,7 @@ const CarSelection = () => {
   };
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <Text style={styles.sheetTitle}>
         {selected ? "Confirm details" : "Choose a ride"}
       </Text>
@@ -208,10 +203,11 @@ const CarSelection = () => {
           />
         </View>
       ) : (
-        <>
-          <FlatList
+        <View style={{ flex: 1 }}>
+          <BottomSheetFlatList
+            contentContainerStyle={{ paddingBottom: verticalScale(20) }}
             data={RIDE_DATA}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item: any) => item.id}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
           />
@@ -222,9 +218,9 @@ const CarSelection = () => {
               if (focused) setSelected(focused);
             }}
           />
-        </>
+        </View>
       )}
-    </>
+    </View>
   );
 };
 

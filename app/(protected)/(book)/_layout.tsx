@@ -45,6 +45,12 @@ export default function Layout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="confirm-pickup"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
