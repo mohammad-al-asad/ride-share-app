@@ -1,10 +1,11 @@
 import { MarkerCircle } from "@/components/AnimatedMarker";
 import CarSelection from "@/components/CarSelection";
 import { MarkerCar, MarkerTriangle } from "@/components/Markers";
+import PaymentScreen from "@/components/PaymentCard";
 import { Ionicons } from "@expo/vector-icons";
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
 import { scale, verticalScale } from "react-native-size-matters";
@@ -13,6 +14,7 @@ const { height } = Dimensions.get("window");
 export default function ChooseRideScreen() {
   const mapRef = useRef<MapView | null>(null);
   const bottomSheetRef = useRef<BottomSheet | null>(null);
+  const [ispayment, setIspayment] = useState(false);
 
   return (
     <View style={styles.mainContainer}>
@@ -75,10 +77,8 @@ export default function ChooseRideScreen() {
           marginTop: verticalScale(4),
         }}
       >
-        <BottomSheetView style={styles.bottomSheet}>
-          <CarSelection />
-          {/* <PaymentScreen /> */}
-        </BottomSheetView>
+        {ispayment && <PaymentScreen />}
+        {!ispayment && <CarSelection setIspayment={setIspayment} />}
       </BottomSheet>
     </View>
   );
@@ -99,10 +99,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-  },
-  bottomSheet: {
-    flex: 1,
-    paddingHorizontal: scale(20),
-    paddingTop: verticalScale(20),
   },
 });

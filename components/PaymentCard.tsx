@@ -1,5 +1,7 @@
 import CustomButton from "@/components/CustomButton"; // Adjust path as needed
+import { BottomSheetView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import countries from "i18n-iso-countries";
 import en from "i18n-iso-countries/langs/en.json";
 import React, { useState } from "react";
@@ -25,89 +27,98 @@ const countryOptions = Object.entries(countryObj).map(([code, name]) => ({
 const PaymentScreen = () => {
   const [selectedCountry, setSelectedCountry] = useState("");
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {/* Header Section */}
-      <Text style={styles.headerText}>Payment screen</Text>
-      <Text style={styles.subHeaderText}>
-        Your card will not be charged until the trip is complete.
-      </Text>
+    <BottomSheetView style={styles.bottomSheet}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        {/* Header Section */}
+        <Text style={styles.headerText}>Payment screen</Text>
+        <Text style={styles.subHeaderText}>
+          Your card will not be charged until the trip is complete.
+        </Text>
 
-      {/* Country Selector */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Country</Text>
-        <Dropdown
-          style={styles.dropdown}
-          data={countryOptions}
-          labelField="label"
-          valueField="value"
-          value={selectedCountry}
-          placeholder="Choose country"
-          onChange={(item) => setSelectedCountry(item.value)}
-        />
-      </View>
-
-      {/* Row for Expiry and CVV */}
-      <View style={styles.row}>
-        <View style={[styles.inputGroup, { flex: 1, marginRight: scale(10) }]}>
-          <Text style={styles.label}>Expiration date</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="MM/YY"
-              placeholderTextColor="#999"
-            />
-          </View>
-        </View>
-
-        <View style={[styles.inputGroup, { flex: 1 }]}>
-          <Text style={styles.label}>CVV</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="123"
-              placeholderTextColor="#999"
-              secureTextEntry
-              maxLength={4}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Card Number Input */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Card number</Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            placeholder="1111 2222 3333 4444"
-            placeholderTextColor="#999"
-            keyboardType="numeric"
+        {/* Country Selector */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Country</Text>
+          <Dropdown
+            style={styles.dropdown}
+            data={countryOptions}
+            labelField="label"
+            valueField="value"
+            value={selectedCountry}
+            placeholder="Choose country"
+            onChange={(item) => setSelectedCountry(item.value)}
           />
-          <View style={styles.cardIcons}>
-            <Image
-              style={{ height: 60, width: 60 }}
-              source={require("@/assets/icons/masterCard.svg")}
-              contentFit="contain"
-            />
+        </View>
+
+        {/* Row for Expiry and CVV */}
+        <View style={styles.row}>
+          <View
+            style={[styles.inputGroup, { flex: 1, marginRight: scale(10) }]}
+          >
+            <Text style={styles.label}>Expiration date</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="MM/YY"
+                placeholderTextColor="#999"
+              />
+            </View>
+          </View>
+
+          <View style={[styles.inputGroup, { flex: 1 }]}>
+            <Text style={styles.label}>CVV</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="123"
+                placeholderTextColor="#999"
+                secureTextEntry
+                maxLength={4}
+              />
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Bottom Button */}
-      <CustomButton
-        text="Next confirm pickup spot"
-        style={styles.confirmButton}
-        onClick={() => console.log("Confirming...")}
-      />
-    </KeyboardAvoidingView>
+        {/* Card Number Input */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Card number</Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="1111 2222 3333 4444"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+            <View style={styles.cardIcons}>
+              <Image
+                style={{ height: 60, width: 60 }}
+                source={require("@/assets/icons/masterCard.svg")}
+                contentFit="contain"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Bottom Button */}
+        <CustomButton
+          text="Next confirm pickup spot"
+          style={styles.confirmButton}
+          onClick={() => router.push("/(protected)/(book)/confirm-pickup")}
+        />
+      </KeyboardAvoidingView>
+    </BottomSheetView>
   );
 };
 
 export default PaymentScreen;
 
 const styles = StyleSheet.create({
+  bottomSheet: {
+    flex: 1,
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(20),
+  },
   headerText: {
     fontSize: moderateScale(22),
     fontWeight: "700",

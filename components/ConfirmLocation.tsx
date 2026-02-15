@@ -21,12 +21,16 @@ const ConfirmPickupScreen = () => {
   const bottomSheetRef = useRef<BottomSheet | null>(null);
   const mapRef = useRef<MapView | null>(null);
   const [currentLocation, setCurrentLocation] = useState({
-    latitude: 23.78086134050495,
-    longitude: 90.4070142170988,
+    latitude: 22.964017700766465,
+    longitude: 91.47941870870076,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
   });
   const [markerPosition, setMarkerPosition] = useState({
-    latitude: 23.78086134050495,
-    longitude: 90.4070142170988,
+    latitude: 22.964017700766465,
+    longitude: 91.47941870870076,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
   });
   // Shared animated value for button bottom position
   const animatedBottom = useSharedValue(verticalScale(215));
@@ -50,7 +54,10 @@ const ConfirmPickupScreen = () => {
             // latitude: routeCoordinates[0].latitude,
             // longitude: routeCoordinates[0].longitude,
           };
-          setCurrentLocation(newLocation);
+          setCurrentLocation(newLocation as any);
+          mapRef.current?.animateCamera({
+            center: newLocation,
+          });
         },
       );
     })();
@@ -77,8 +84,8 @@ const ConfirmPickupScreen = () => {
   });
 
   const pickupLocation = {
-    latitude: 23.78146490362791,
-    longitude: 90.41563602980078,
+    latitude: 22.964017700766465,
+    longitude: 91.47941870870076,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   };

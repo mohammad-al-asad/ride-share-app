@@ -1,6 +1,6 @@
 import CustomButton from "@/components/CustomButton";
 import { Ionicons } from "@expo/vector-icons";
-import { BottomSheetFlatList } from "@gorhom/bottom-sheet";
+import { BottomSheetFlatList, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
 import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -149,7 +149,7 @@ const SelectedRideCard = ({
   );
 };
 
-const CarSelection = () => {
+const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
   const [focused, setFocused] = useState<any>(null);
   const [selected, setSelected] = useState<any>(null);
 
@@ -187,50 +187,60 @@ const CarSelection = () => {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <>
       <Text style={styles.sheetTitle}>
         {selected ? "Confirm details" : "Choose a ride"}
       </Text>
       {selected ? (
-        <View style={{ paddingVertical: verticalScale(10) }}>
+        <BottomSheetView style={styles.bottomSheet}>
           <SelectedRideCard item={selected} onClear={() => setSelected(null)} />
           <CustomButton
             style={{ marginTop: verticalScale(20) }}
             text={`Choose ${selected.type} ${selected.name} ${
               selected?.sub ? selected.sub : ""
             }`}
-            onClick={() => console.log("Confirmed")}
+            onClick={() => setIspayment(true)}
           />
-        </View>
+        </BottomSheetView>
       ) : (
-        <View style={{ flex: 1 }}>
+        <>
           <BottomSheetFlatList
-            contentContainerStyle={{ paddingBottom: verticalScale(20) }}
+            contentContainerStyle={styles.listContainer}
             data={RIDE_DATA}
             keyExtractor={(item: any) => item.id}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
           />
-          <CustomButton
-            style={{ marginTop: verticalScale(10) }}
-            text={`Select ${focused ? focused.name + " " + (focused?.sub ? focused.sub : "") : ""}`}
-            onClick={() => {
-              if (focused) setSelected(focused);
-            }}
-          />
-        </View>
+          <View style={{ paddingHorizontal: verticalScale(15) }}>
+            <CustomButton
+              style={{
+                marginTop: verticalScale(10),
+              }}
+              text={`Select ${focused ? focused.name + " " + (focused?.sub ? focused.sub : "") : ""}`}
+              onClick={() => {
+                if (focused) setSelected(focused);
+              }}
+            />
+          </View>
+        </>
       )}
-    </View>
+    </>
   );
 };
 
 export default CarSelection;
 
 const styles = StyleSheet.create({
+  bottomSheet: {
+    flex: 1,
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(40),
+  },
   sheetTitle: {
     fontSize: moderateScale(18),
     fontWeight: "700",
     textAlign: "center",
+    marginVertical: scale(14),
     marginBottom: scale(5),
   },
   sectionHeader: {
@@ -272,6 +282,7 @@ const styles = StyleSheet.create({
     position: "relative",
     height: verticalScale(160),
     justifyContent: "space-between",
+    marginTop: verticalScale(10),
   },
   clearSelection: {
     position: "absolute",
@@ -308,5 +319,11 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(18),
     fontWeight: "800",
     color: "#1A1A1A",
+  },
+  listContainer: {
+    flex: 1,
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(20),
+    marginBottom: verticalScale(20),
   },
 });
