@@ -51,6 +51,18 @@ export default function Layout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="ride-map"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="edit-map"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

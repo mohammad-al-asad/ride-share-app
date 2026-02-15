@@ -149,7 +149,12 @@ const ConfirmPickupScreen = () => {
             </Text>
           </View>
 
-          <CustomButton text="Confirm Location" onClick={() => {}} />
+          <CustomButton
+            text="Confirm Location"
+            onClick={() => {
+              router.replace("/(protected)/(book)/ride-map");
+            }}
+          />
         </BottomSheetView>
       </BottomSheet>
     </View>
