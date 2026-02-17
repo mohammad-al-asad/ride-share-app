@@ -3,7 +3,7 @@ import { colors } from "@/config/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Home01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { useRouter } from "expo-router"; //
+import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";

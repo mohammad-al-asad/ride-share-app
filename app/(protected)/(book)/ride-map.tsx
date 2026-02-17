@@ -5,7 +5,8 @@ import TripDetails from "@/components/TripDetails";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
 import * as Location from "expo-location";
-import React, { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Dimensions,
   StyleSheet,
@@ -31,33 +32,42 @@ export default function TripProgressScreen() {
   const bottomSheetRef = useRef<BottomSheet | null>(null);
 
   // Track driver location
-  useEffect(() => {
-    let subscription: any;
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+  useFocusEffect(
+    useCallback(() => {
+      let subscription: Location.LocationSubscription | null = null;
 
-      subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          distanceInterval: 0,
-          timeInterval: 0,
-        },
-        (loc) => {
-          const newLocation = {
-            // latitude: loc.coords.latitude,
-            // longitude: loc.coords.longitude,
-            latitude: routeCoordinates[0].latitude,
-            longitude: routeCoordinates[0].longitude,
-          };
-          setUserLocation(newLocation);
-          setHeading(loc.coords.heading || 0);
-        },
-      );
-    })();
+      const startWatching = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-    return () => subscription?.remove();
-  }, []);
+        if (status !== "granted") return;
+
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5,
+            timeInterval: 2000,
+          },
+          (loc) => {
+            const newLocation = {
+              latitude: routeCoordinates[0].latitude,
+              longitude: routeCoordinates[0].longitude,
+            };
+
+            setUserLocation(newLocation);
+            setHeading(loc.coords.heading || 0);
+          },
+        );
+      };
+
+      startWatching();
+
+      // 🔴 This runs immediately when screen loses focus
+      return () => {
+        subscription?.remove();
+        subscription = null;
+      };
+    }, [routeCoordinates]),
+  );
   return (
     <View style={styles.container}>
       {/* Background Map with Route */}

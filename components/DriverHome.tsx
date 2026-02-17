@@ -2,8 +2,8 @@ import { colors } from "@/config/colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { router } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -16,45 +16,43 @@ export default function HomeScreen() {
   const [heading, setHeading] = useState<number>(0);
   const mapRef = useRef<MapView | null>(null);
 
-  useEffect(() => {
-    let subscription: Location.LocationSubscription;
+  useFocusEffect(
+    useCallback(() => {
+      let subscription: Location.LocationSubscription;
 
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      const startWatching = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-      subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 0,
-          distanceInterval: 0,
-        },
-        (location) => {
-          const { latitude, longitude, heading } = location.coords;
+        if (status !== "granted") return;
 
-          setDriverLocation({ latitude, longitude });
-          // setDriverLocation({
-          //   latitude: 32.78,
-          //   longitude: -96.8,
-          // });
-          setHeading(heading || 0);
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 1000,
+            distanceInterval: 5,
+          },
+          (location) => {
+            const { latitude, longitude, heading } = location.coords;
 
-          mapRef.current?.animateCamera({
-            center: { latitude, longitude },
-            // center: {
-            //   latitude: 32.78,
-            //   longitude: -96.8,
-            // },
-            zoom: 17,
-          });
-        },
-      );
-    })();
+            setDriverLocation({ latitude, longitude });
+            setHeading(heading || 0);
 
-    return () => {
-      subscription?.remove();
-    };
-  }, []);
+            mapRef.current?.animateCamera({
+              center: { latitude, longitude },
+              zoom: 17,
+            });
+          },
+        );
+      };
+
+      startWatching();
+
+      return () => {
+        subscription?.remove();
+        subscription = undefined as any;
+      };
+    }, []),
+  );
 
   return (
     <View style={styles.mainContainer}>

@@ -1,6 +1,7 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
+import { Image } from "expo-image";
 import React, { useState } from "react";
 import {
   ScrollView,
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ImagePicker from "react-native-image-crop-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -16,21 +18,48 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 const UploadCard = ({
   title,
   onPress,
+  image,
 }: {
   title: string;
   onPress: () => void;
+  image: string;
 }) => (
   <View style={styles.uploadCard}>
-    <Text style={styles.uploadTitle}>{title}</Text>
-    <TouchableOpacity style={styles.uploadSmallButton} onPress={onPress}>
-      <Text style={styles.uploadButtonText}>Upload photo</Text>
-    </TouchableOpacity>
+    {image ? (
+      <Image
+        style={{ width: "100%", height: "100%" }}
+        source={{ uri: image }}
+      />
+    ) : (
+      <>
+        <Text style={styles.uploadTitle}>{title}</Text>
+        <TouchableOpacity style={styles.uploadSmallButton} onPress={onPress}>
+          <Text style={styles.uploadButtonText}>Upload photo</Text>
+        </TouchableOpacity>
+      </>
+    )}
   </View>
 );
 
 export default function DriverLicenseUploadScreen() {
-  const [frontImage, setFrontImage] = useState(null);
-  const [backImage, setBackImage] = useState(null);
+  const [frontImage, setFrontImage] = useState<string>("");
+  const [backImage, setBackImage] = useState<string>("");
+  async function openCamera(setImage: any) {
+    try {
+      const result = await ImagePicker.openPicker({
+        height: verticalScale(155),
+        width: scale(305),
+        cropping: true,
+        freeStyleCropEnabled: true,
+        mediaType: "photo",
+        cropperToolbarTitle: "Adjust Document",
+        cropperActiveWidgetColor: "#6372ff",
+      });
+      setImage(result.path);
+    } catch (e) {
+      console.log(e);
+    }
+  }
 
   const isDoneEnabled = frontImage && backImage;
 
@@ -53,17 +82,15 @@ export default function DriverLicenseUploadScreen() {
 
         {/* Upload Sections */}
         <UploadCard
+          image={frontImage}
           title="Upload front-side"
-          onPress={() => {
-            /* Add Image Picker Logic */
-          }}
+          onPress={() => openCamera(setFrontImage)}
         />
 
         <UploadCard
+          image={backImage}
           title="Upload back-side"
-          onPress={() => {
-            /* Add Image Picker Logic */
-          }}
+          onPress={() => openCamera(setBackImage)}
         />
 
         {/* Action Button */}
@@ -105,11 +132,12 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(8),
   },
   uploadCard: {
-    height: verticalScale(140),
+    height: verticalScale(155),
+    width: scale(305),
+    marginHorizontal: "auto",
     borderWidth: 1.5,
-    borderColor: "#D1D5DB",
-    borderStyle: "dashed", // Dashed border as per design
-    borderRadius: scale(12),
+    borderColor: "#DAD6FF",
+    borderStyle: "dashed", 
     backgroundColor: "transparent",
     justifyContent: "center",
     alignItems: "center",

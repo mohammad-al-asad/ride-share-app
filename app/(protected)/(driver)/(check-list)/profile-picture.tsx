@@ -1,9 +1,9 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import ImagePicker from "react-native-image-crop-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -15,7 +15,23 @@ const INSTRUCTIONS = [
 ];
 
 export default function TakeProfilePhotoScreen() {
-  const router = useRouter();
+  const [image, setImage] = useState<string>();
+  async function openCamera() {
+    try {
+      const result = await ImagePicker.openCamera({
+        height: 200,
+        width: 200,
+        cropping: true,
+        freeStyleCropEnabled: true,
+        mediaType: "photo",
+        cropperToolbarTitle: "Adjust Document",
+        cropperActiveWidgetColor: "#6372ff",
+      });
+      setImage(result.path);
+    } catch (e) {
+      console.log(e);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,7 +53,11 @@ export default function TakeProfilePhotoScreen() {
         {/* Example Image Preview */}
         <View style={styles.imagePreviewContainer}>
           <Image
-            source={require("@/assets/images/demo-profile.png")}
+            source={
+              image
+                ? { uri: image }
+                : require("@/assets/images/demo-profile.png")
+            }
             style={styles.sampleImage}
             contentFit="contain"
           />
@@ -45,14 +65,7 @@ export default function TakeProfilePhotoScreen() {
 
         {/* Action Button */}
         <View style={styles.buttonWrapper}>
-          <CustomButton
-            text="Take Photo"
-            onClick={() => {
-              // Handle camera logic here
-              //   router.push("/camera-view");
-            }}
-            type="main"
-          />
+          <CustomButton text="Take Photo" onClick={openCamera} type="main" />
         </View>
       </View>
     </SafeAreaView>
@@ -102,11 +115,9 @@ const styles = StyleSheet.create({
   },
   sampleImage: {
     borderWidth: 1.5,
-    borderColor: "#D1D5DB",
-    borderStyle: "dashed",
+    borderColor: "#DAD6FF",
     width: scale(200),
     height: scale(200),
-    borderRadius: scale(4),
   },
   buttonWrapper: {
     marginTop: "auto",

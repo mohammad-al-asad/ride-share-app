@@ -1,8 +1,10 @@
 import { MarkerCircle } from "@/components/AnimatedMarker";
+import FareModal from "@/components/FareModal";
 import { MarkerTriangle } from "@/components/Markers";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import React, { useEffect, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import {
   FlatList,
   Keyboard,
@@ -40,37 +42,49 @@ export default function MapSelectionScreen() {
     "dropoff",
   );
 
+  const [modalVisible, setModalVisible] = useState(false);
+
   const [searchTimer, setSearchTimer] = useState<ReturnType<
     typeof setTimeout
   > | null>(null);
 
   /* ---------- Location Tracking ---------- */
-  useEffect(() => {
-    let subscription: any;
+  useFocusEffect(
+    useCallback(() => {
+      let subscription: Location.LocationSubscription | null = null;
 
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+      const startWatching = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-      subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 2000,
-          distanceInterval: 1,
-        },
-        (loc) => {
-          const newLocation = {
-            latitude: routeCoordinates[0].latitude,
-            longitude: routeCoordinates[0].longitude,
-          };
-          setUserLocation(newLocation);
-          setHeading(loc.coords.heading || 0);
-        },
-      );
-    })();
+        if (status !== "granted") return;
 
-    return () => subscription?.remove();
-  }, []);
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 2000,
+            distanceInterval: 1,
+          },
+          (loc) => {
+            const newLocation = {
+              latitude: routeCoordinates[0].latitude,
+              longitude: routeCoordinates[0].longitude,
+            };
+
+            setUserLocation(newLocation);
+            setHeading(loc.coords.heading || 0);
+          },
+        );
+      };
+
+      startWatching();
+
+      // This runs when screen loses focus
+      return () => {
+        subscription?.remove();
+        subscription = null;
+      };
+    }, [routeCoordinates]),
+  );
 
   /* ---------- Debounced Search ---------- */
   const debouncedSearch = (text: string) => {
@@ -124,6 +138,15 @@ export default function MapSelectionScreen() {
 
   return (
     <View style={styles.container}>
+      <FareModal
+        visible={modalVisible}
+        price={10.0}
+        onCancel={() => setModalVisible(false)}
+        onConfirm={() => {
+          console.log("Fare accepted");
+          setModalVisible(false);
+        }}
+      />
       {/* ---------- MAP ---------- */}
       <MapView
         ref={mapRef}
@@ -161,7 +184,10 @@ export default function MapSelectionScreen() {
             <View style={styles.inputCard}>
               {/* Pickup */}
               <View style={styles.inputRow}>
-                <TouchableOpacity style={styles.backButton}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => router.back()}
+                >
                   <Ionicons name="chevron-back" size={24} color="black" />
                 </TouchableOpacity>
                 <View style={styles.inputBox}>
@@ -245,7 +271,10 @@ export default function MapSelectionScreen() {
           <Text style={styles.secondaryBtnText}>Cancel</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.primaryBtn}>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={() => setModalVisible(true)}
+        >
           <Text style={styles.primaryBtnText}>Check fare</Text>
         </TouchableOpacity>
       </View>
@@ -270,6 +299,11 @@ const styles = StyleSheet.create({
     paddingTop: verticalScale(50),
     paddingHorizontal: scale(10),
     borderRadius: scale(10),
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
 
   row: {

@@ -1,14 +1,30 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import ImagePicker from "react-native-image-crop-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 export default function VehicleInsurancePaperScreen() {
-  const router = useRouter();
+  const [image, setImage] = useState<string>();
+  async function openCamera() {
+    try {
+      const result = await ImagePicker.openCamera({
+        width: scale(300),
+        height: verticalScale(350),
+        cropping: true,
+        freeStyleCropEnabled: true,
+        mediaType: "photo",
+        cropperToolbarTitle: "Adjust Document",
+        cropperActiveWidgetColor: "#6372ff",
+      });
+      setImage(result.path);
+    } catch (e) {
+      console.log(e);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,7 +44,11 @@ export default function VehicleInsurancePaperScreen() {
         {/* Instructional Illustration */}
         <View style={styles.illustrationContainer}>
           <Image
-            source={require("@/assets/images/registration-ph.png")}
+            source={
+              image
+                ? { uri: image }
+                : require("@/assets/images/registration-ph.png")
+            }
             style={styles.illustration}
             contentFit="contain"
           />
@@ -36,14 +56,7 @@ export default function VehicleInsurancePaperScreen() {
 
         {/* Action Button */}
         <View style={styles.buttonWrapper}>
-          <CustomButton
-            text="Take Photo"
-            onClick={() => {
-              // Trigger camera logic
-              //   router.push("/camera-view");
-            }}
-            type="main"
-          />
+          <CustomButton text="Take Photo" onClick={openCamera} type="main" />
         </View>
       </View>
     </SafeAreaView>
@@ -80,14 +93,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginVertical: verticalScale(20),
-    borderWidth: 1.5,
-    borderColor: "#D1D5DB",
-    borderStyle: "dashed",
-    borderRadius: scale(12),
   },
   illustration: {
-    width: scale(280),
-    height: verticalScale(280),
+    width: scale(300),
+    height: verticalScale(350),
+    borderWidth: 1.5,
+    borderColor: "#DAD6FF",
+    borderStyle: "dashed",
   },
   buttonWrapper: {
     marginTop: "auto",

@@ -6,8 +6,9 @@ import RequiredActions from "@/components/RequiredActions";
 import RiderPickupCard from "@/components/RidePickupCard";
 import { colors } from "@/config/colors";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
-import React, { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -53,59 +54,71 @@ export default function HomeScreen() {
     })();
   }, []);
 
-  // Track driver location
-  useEffect(() => {
-    let subscription: any;
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+  useFocusEffect(
+    useCallback(() => {
+      let subscription: Location.LocationSubscription | null = null;
 
-      subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          distanceInterval: 0,
-          timeInterval: 0,
-        },
-        (loc) => {
-          const newLocation = {
-            // latitude: loc.coords.latitude,
-            // longitude: loc.coords.longitude,
-            latitude: routeCoordinates[0].latitude,
-            longitude: routeCoordinates[0].longitude,
-          };
-          setDriverLocation(newLocation);
-          setHeading(loc.coords.heading || 0);
+      const startWatching = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-          // Check if driver is near pickup
-          const pickup = routeCoordinates[2];
-          const distanceToPickup = getDistance(
-            newLocation.latitude,
-            newLocation.longitude,
-            pickup.latitude,
-            pickup.longitude,
-          );
-          if (distanceToPickup < 30) setArrived(true);
+        if (status !== "granted") return;
 
-          // Update current step
-          if (steps.length) {
-            const step = steps[currentStepIndex];
-            const end = step.end_location;
-            const distToStepEnd = getDistance(
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5,
+            timeInterval: 2000,
+          },
+          (loc) => {
+            const newLocation = {
+              latitude: routeCoordinates[0].latitude,
+              longitude: routeCoordinates[0].longitude,
+            };
+
+            setDriverLocation(newLocation);
+            setHeading(loc.coords.heading || 0);
+
+            // ---- Pickup Check ----
+            const pickup = routeCoordinates[2];
+            const distanceToPickup = getDistance(
               newLocation.latitude,
               newLocation.longitude,
-              end.lat,
-              end.lng,
+              pickup.latitude,
+              pickup.longitude,
             );
-            if (distToStepEnd < 15 && currentStepIndex < steps.length - 1) {
-              setCurrentStepIndex((prev) => prev + 1);
-            }
-          }
-        },
-      );
-    })();
 
-    return () => subscription?.remove();
-  }, [steps, currentStepIndex]);
+            if (distanceToPickup < 30) {
+              setArrived(true);
+            }
+
+            // ---- Step Progression ----
+            if (steps.length) {
+              const step = steps[currentStepIndex];
+              const end = step.end_location;
+
+              const distToStepEnd = getDistance(
+                newLocation.latitude,
+                newLocation.longitude,
+                end.lat,
+                end.lng,
+              );
+
+              if (distToStepEnd < 15 && currentStepIndex < steps.length - 1) {
+                setCurrentStepIndex((prev) => prev + 1);
+              }
+            }
+          },
+        );
+      };
+
+      startWatching();
+
+      return () => {
+        subscription?.remove();
+        subscription = null;
+      };
+    }, [routeCoordinates, steps, currentStepIndex]),
+  );
 
   return (
     <View style={styles.mainContainer}>

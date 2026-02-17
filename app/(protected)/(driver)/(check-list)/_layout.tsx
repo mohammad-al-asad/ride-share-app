@@ -1,9 +1,35 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useCameraPermissions } from "expo-camera";
 import { router, Stack } from "expo-router";
-import { StyleSheet, TouchableOpacity } from "react-native";
+import { useEffect } from "react";
+import { Button, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 
 export default function Layout() {
+  const [permission, requestPermission] = useCameraPermissions();
+
+  
+  useEffect(() => {
+    (async () => {
+      await requestPermission();
+    })();
+  }, []);
+  
+  if (!permission) {
+    return <View />;
+  }
+  if (!permission.granted) {
+    // Camera permissions are not granted yet.
+    return (
+      <View style={styles.requestContainer}>
+        <Text style={styles.message}>
+          We need your permission to show the camera
+        </Text>
+        <Button onPress={requestPermission} title="grant permission" />
+      </View>
+    );
+  }
+
   return (
     <Stack
       screenOptions={{
@@ -79,5 +105,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginVertical: scale(12),
+  },
+  requestContainer: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  message: {
+    textAlign: "center",
+    paddingBottom: 10,
   },
 });

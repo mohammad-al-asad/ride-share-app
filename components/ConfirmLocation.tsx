@@ -1,8 +1,8 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import * as Location from "expo-location";
-import { router } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import React, { useCallback, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -35,35 +35,45 @@ const ConfirmPickupScreen = () => {
   // Shared animated value for button bottom position
   const animatedBottom = useSharedValue(verticalScale(215));
 
-  useEffect(() => {
-    let subscription: any;
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
+  useFocusEffect(
+    useCallback(() => {
+      let subscription: Location.LocationSubscription | null = null;
 
-      subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          distanceInterval: 0,
-          timeInterval: 0,
-        },
-        (loc) => {
-          const newLocation = {
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-            // latitude: routeCoordinates[0].latitude,
-            // longitude: routeCoordinates[0].longitude,
-          };
-          setCurrentLocation(newLocation as any);
-          mapRef.current?.animateCamera({
-            center: newLocation,
-          });
-        },
-      );
-    })();
+      const startWatching = async () => {
+        const { status } = await Location.requestForegroundPermissionsAsync();
 
-    return () => subscription?.remove();
-  }, []);
+        if (status !== "granted") return;
+
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5,
+            timeInterval: 2000,
+          },
+          (loc) => {
+            const newLocation = {
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            };
+
+            setCurrentLocation(newLocation as any);
+
+            mapRef.current?.animateCamera({
+              center: newLocation,
+            });
+          },
+        );
+      };
+
+      startWatching();
+
+      // Runs when screen loses focus
+      return () => {
+        subscription?.remove();
+        subscription = null;
+      };
+    }, []),
+  );
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index === 0) {
