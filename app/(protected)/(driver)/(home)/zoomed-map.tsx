@@ -6,10 +6,17 @@ import RequiredActions from "@/components/RequiredActions";
 import RiderPickupCard from "@/components/RidePickupCard";
 import { colors } from "@/config/colors";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -19,12 +26,12 @@ const routeCoordinates = [
   { latitude: 32.785, longitude: -96.8 },
   { latitude: 32.785, longitude: -96.797 },
 ];
-
+const { height } = Dimensions.get("window");
 const stripHtml = (html: string) => html.replace(/<[^>]+>/g, "");
 
 export default function HomeScreen() {
   const mapRef = useRef<MapView | null>(null);
-
+  const bottomSheetRef = useRef<BottomSheet | null>(null);
   // Driver state
   const [driverLocation, setDriverLocation] = useState(routeCoordinates[0]);
   const [heading, setHeading] = useState(0);
@@ -176,48 +183,79 @@ export default function HomeScreen() {
           <MarkerUser />
         </Marker>
       </MapView>
-      {/* Center Floating "Go Online" Button */}
-      <View style={styles.onlineButtonWrapper}>
-        <TouchableOpacity
-          style={styles.goOnlineButton}
-          onPress={() => {
-            setisOffline(false);
-            setIsRequest(true);
+      {/* Ride Request Card */}
+      {isRequest && (
+        <RequestCard
+          onAccept={() => {
+            setIsRequest(false);
+            setIsAccepted(true);
+          }}
+        />
+      )}
+      {/* Ride Request Card */}
+      {/* Bottom Status Sheets */}
+      {isOffline && (
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={1}
+          style={[
+            styles.bottomSheet,
+            { alignItems: "center", justifyContent: "center" },
+          ]}
+          snapPoints={[height * 0.06, height * 0.35]}
+          enableDynamicSizing={false}
+          activeOffsetY={[0, 1]}
+          enablePanDownToClose={false}
+          handleIndicatorStyle={{
+            backgroundColor: "#ccc",
+            width: scale(50),
+            height: 8,
+            marginTop: verticalScale(4),
           }}
         >
-          <MaterialCommunityIcons
-            name="steering"
-            size={scale(20)}
-            color={colors.gold}
-          />
-          <Text style={styles.goOnlineText}>Go Online</Text>
-        </TouchableOpacity>
-      </View>
-      {/* Bottom Status Sheets */}
-      <View style={styles.bottomSheet}>
-        <View style={styles.handle} />
-        {/* Offline Sheet */}
-        {isOffline && (
+          {/* Offline Sheet */}
           <>
             <Text style={styles.statusHeader}>Your&apos;re offline</Text>
             <RequiredActions />
+            <TouchableOpacity
+              style={styles.goOnlineButton}
+              onPress={() => {
+                setisOffline(false);
+                setIsRequest(true);
+              }}
+            >
+              <MaterialCommunityIcons
+                name="steering"
+                size={scale(20)}
+                color={colors.gold}
+              />
+              <Text style={styles.goOnlineText}>Go Online</Text>
+            </TouchableOpacity>
           </>
-        )}
-        {/* Offline Sheet */}
-        {/* Ride Request Card */}
-        {isRequest && (
-          <RequestCard
-            onAccept={() => {
-              setIsRequest(false);
-              setIsAccepted(true);
-            }}
-          />
-        )}
-        {/* Ride Request Card */}
-        {/* Accepted Ride */}
-        {isAccepted && <RiderPickupCard />}
-        {/* Accepted Ride */}
-      </View>
+          {/* Offline Sheet */}
+        </BottomSheet>
+      )}
+      {isAccepted && (
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={1}
+          style={styles.bottomSheet}
+          snapPoints={[height * 0.06, height * 0.43]}
+          enableDynamicSizing={false}
+          activeOffsetY={[0, 1]}
+          enablePanDownToClose={false}
+          handleIndicatorStyle={{
+            backgroundColor: "#ccc",
+            width: scale(50),
+            height: 8,
+            marginTop: verticalScale(4),
+          }}
+        >
+          {/* Accepted Ride */}
+          <RiderPickupCard />
+          {/* Accepted Ride */}
+        </BottomSheet>
+      )}
     </View>
   );
 }
@@ -295,6 +333,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: scale(10),
     elevation: 5,
+    justifyContent: "center",
+    marginVertical: scale(20),
   },
   goOnlineText: {
     color: colors.gold,
@@ -302,33 +342,18 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
   },
   bottomSheet: {
-    position: "absolute",
-    bottom: 0,
-    width: "100%",
-    backgroundColor: "#fff",
-    borderTopLeftRadius: scale(25),
-    borderTopRightRadius: scale(25),
-    paddingBottom: verticalScale(40),
     paddingHorizontal: scale(20),
-    alignItems: "center",
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  handle: {
-    width: scale(40),
-    height: scale(5),
-    backgroundColor: "#E0E0E0",
-    borderRadius: 10,
-    marginTop: scale(10),
-    marginBottom: scale(20),
-  },
   statusHeader: {
     fontSize: moderateScale(22),
     fontWeight: "700",
     color: "#333",
-    marginBottom: scale(15),
+    marginVertical: scale(15),
+    marginHorizontal: "auto",
   },
 });
