@@ -11,6 +11,7 @@ export interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   loading: boolean;
 }
@@ -18,6 +19,7 @@ interface AuthState {
 const initialState: AuthState = {
   user: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
   loading: false,
 };
@@ -27,10 +29,23 @@ const initialState: AuthState = {
  */
 export const persistCredentials = createAsyncThunk(
   "auth/persistCredentials",
-  async ({ user, token }: { user: User; token: string }) => {
+  async ({
+    user,
+    token,
+    refreshToken,
+  }: {
+    user: User;
+    token: string;
+    refreshToken?: string;
+  }) => {
     await AsyncStorage.setItem("user", JSON.stringify(user));
     await AsyncStorage.setItem("token", token);
-    return { user, token };
+    if (refreshToken) {
+      await AsyncStorage.setItem("refreshToken", refreshToken);
+    } else {
+      await AsyncStorage.removeItem("refreshToken");
+    }
+    return { user, token, refreshToken: refreshToken ?? null };
   },
 );
 
@@ -42,11 +57,13 @@ export const loadCredentials = createAsyncThunk(
   async () => {
     const user = await AsyncStorage.getItem("user");
     const token = await AsyncStorage.getItem("token");
+    const refreshToken = await AsyncStorage.getItem("refreshToken");
 
     if (user && token) {
       return {
         user: JSON.parse(user),
         token,
+        refreshToken,
       };
     }
 
@@ -60,6 +77,7 @@ export const loadCredentials = createAsyncThunk(
 export const performLogout = createAsyncThunk("auth/logout", async () => {
   await AsyncStorage.removeItem("user");
   await AsyncStorage.removeItem("token");
+  await AsyncStorage.removeItem("refreshToken");
 });
 
 const authSlice = createSlice({
@@ -74,10 +92,18 @@ const authSlice = createSlice({
       })
       .addCase(
         persistCredentials.fulfilled,
-        (state, action: PayloadAction<{ user: User; token: string }>) => {
+        (
+          state,
+          action: PayloadAction<{
+            user: User;
+            token: string;
+            refreshToken: string | null;
+          }>,
+        ) => {
           state.loading = false;
           state.user = action.payload.user;
           state.token = action.payload.token;
+          state.refreshToken = action.payload.refreshToken;
           state.isAuthenticated = true;
         },
       )
@@ -85,12 +111,14 @@ const authSlice = createSlice({
         if (action.payload) {
           state.user = action.payload.user;
           state.token = action.payload.token;
+          state.refreshToken = action.payload.refreshToken ?? null;
           state.isAuthenticated = true;
         }
       })
       .addCase(performLogout.fulfilled, (state) => {
         state.user = null;
         state.token = null;
+        state.refreshToken = null;
         state.isAuthenticated = false;
       });
   },

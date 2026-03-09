@@ -1,6 +1,7 @@
 import AuthBackground from "@/components/AuthBackground";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import { colors } from "@/config/colors";
+import { useDeleteAccountMutation } from "@/redux/api/authApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { performLogout } from "@/redux/slices/authSlice";
 import { RootState } from "@/redux/store";
@@ -8,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +23,18 @@ export default function ProfileScreen() {
   const user = useAppSelector((state: RootState) => state.auth.user);
   const isDriver = user?.role === "driver";
   const dispatch = useAppDispatch();
+  const [deleteAccount, { isLoading }] = useDeleteAccountMutation();
+
+  const handleDelteAccount = async () => {
+    try {
+      await deleteAccount().unwrap();
+      dispatch(performLogout());
+      router.replace("/(auth)/login");
+    } catch (err: any) {
+      Alert.alert("Error", err.data.error.message);
+      console.log("Deletion failed:", err);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -159,8 +173,9 @@ export default function ProfileScreen() {
       </ScrollView>
       <ConfirmationModal
         onClose={() => setDeleteConfirmation(false)}
-        onConfirm={() => setDeleteConfirmation(false)}
+        onConfirm={() => handleDelteAccount()}
         visible={deleteConfirmation}
+        isLoading ={isLoading}
         title="Are you sure you want to delete?"
         message="This action is permanent, and you will lose all your data and history. If you proceed, you won’t be able to recover your account."
       />

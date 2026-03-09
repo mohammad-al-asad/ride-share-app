@@ -1,6 +1,11 @@
 import { colors } from "@/config/colors";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 
 interface ButtonProps {
   type?: string;
@@ -38,27 +43,31 @@ const CustomButton = ({
         style,
       ]}
     >
-      <Text
-        style={[
-          styles.Text,
-          {
-            color:
-              type === "outline"
-                ? "#000"
-                : type === "destructive"
-                  ? "#fff"
-                  : colors.gold,
-          },
-          textStyle,
-          ...[
-            isDisable && {
-              color: "#9CA3AF",
+      {!isDisable ? (
+        <Text
+          style={[
+            styles.Text,
+            {
+              color:
+                type === "outline"
+                  ? "#000"
+                  : type === "destructive"
+                    ? "#fff"
+                    : colors.gold,
             },
-          ],
-        ]}
-      >
-        {text}
-      </Text>
+            textStyle,
+            ...[
+              isDisable && {
+                color: "#9CA3AF",
+              },
+            ],
+          ]}
+        >
+          {text}
+        </Text>
+      ) : (
+        <ActivityIndicator size="small" color={colors.main} />
+      )}
     </TouchableOpacity>
   );
 };

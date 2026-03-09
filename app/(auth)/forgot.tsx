@@ -1,10 +1,12 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
+import { useSendVerificationMutation } from "@/redux/api/authApi";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +17,33 @@ import { CustomInput } from "../../components/CustomInput";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [sendVerification, { isLoading }] = useSendVerificationMutation();
+
+  const onNext = async () => {
+    if (!email.trim()) {
+      Alert.alert("Email required", "Please enter your email.");
+      return;
+    }
+
+    try {
+      await sendVerification({ email: email.trim() }).unwrap();
+      router.push({
+        pathname: "/(auth)/verify-otp",
+        params: {
+          email: email.trim(),
+          path: "/(auth)/set-password",
+        },
+      });
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to send verification code.";
+      Alert.alert("Error", message);
+      console.log("Send verification failed:", err);
+    }
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -33,20 +62,21 @@ export default function ForgotPasswordScreen() {
 
           <View style={styles.form}>
             <Text style={styles.label}>Email</Text>
-            <CustomInput icon="mail-outline" placeholder="Email" />
+            <CustomInput
+              icon="mail-outline"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
 
             <View style={styles.buttonSpacer}>
               <CustomButton
                 type="main"
-                text="Next"
-                onClick={() => {
-                  router.push({
-                    pathname: "/(auth)/verify-otp",
-                    params: {
-                      path: "/(auth)/set-password",
-                    },
-                  });
-                }}
+                text={isLoading ? "Sending..." : "Next"}
+                onClick={onNext}
+                isDisable={isLoading}
               />
             </View>
 

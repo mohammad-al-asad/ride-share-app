@@ -1,9 +1,14 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
+import {
+  useSendVerificationMutation,
+  useVerifyEmailMutation,
+} from "@/redux/api/authApi";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -17,9 +22,82 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 const VerifyOtpScreen: React.FC = () => {
   const [otp, setOtp] = useState("");
   const router = useRouter();
-  const { path } = useLocalSearchParams();
-  const verify = () => {
-    router.replace(path as any);
+  const [sendVerification, { isLoading: isResending }] =
+    useSendVerificationMutation();
+  const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation();
+  const { path, email } = useLocalSearchParams<{
+    path?: string;
+    email?: string;
+  }>();
+  const emailValue = Array.isArray(email) ? email[0] : email;
+
+  const verify = async () => {
+    if (!emailValue) {
+      Alert.alert("Missing email", "Please go back and enter your email again.");
+      return;
+    }
+    if (otp.length !== 4) {
+      Alert.alert("Invalid OTP", "Please enter the 4-digit OTP code.");
+      return;
+    }
+
+    try {
+      const response = await verifyEmail({
+        email: emailValue,
+        otp,
+      }).unwrap();
+
+      Alert.alert(
+        "Success",
+        response?.data?.message ?? "Email verified",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              if (path) {
+                if (emailValue) {
+                  router.replace({
+                    pathname: path as any,
+                    params: { email: emailValue },
+                  } as any);
+                } else {
+                  router.replace(path as any);
+                }
+                return;
+              }
+              router.replace("/(auth)/login");
+            },
+          },
+        ],
+        { cancelable: false },
+      );
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Invalid or expired OTP";
+      Alert.alert("Verification failed", message);
+      console.log("Verify email failed:", err);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (!emailValue) {
+      Alert.alert("Missing email", "Please go back and enter your email again.");
+      return;
+    }
+
+    try {
+      const response = await sendVerification({ email: emailValue }).unwrap();
+      Alert.alert("OTP sent", response?.data?.message ?? "Verification code sent.");
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to resend verification code.";
+      Alert.alert("Error", message);
+      console.log("Resend verification failed:", err);
+    }
   };
 
   return (
@@ -31,8 +109,8 @@ const VerifyOtpScreen: React.FC = () => {
       <View style={styles.inner}>
         <Text style={styles.heading}>Verify Code</Text>
         <Text style={styles.description}>
-          We Sent OTP code to your email example@gmail.com. Enter the code below
-          to verify.
+          We sent OTP code to your email {emailValue ?? "example@gmail.com"}. Enter
+          the code below to verify.
         </Text>
 
         <OtpInput
@@ -46,11 +124,18 @@ const VerifyOtpScreen: React.FC = () => {
           }}
         />
       </View>
-      <CustomButton type="main" text="Verify" onClick={verify} />
+      <CustomButton
+        type="main"
+        text={isVerifying ? "Verifying..." : "Verify"}
+        onClick={verify}
+        isDisable={isVerifying}
+      />
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Don’t receive OTP? </Text>
-        <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-          <Text style={styles.linkText}>Resend again</Text>
+        <Text style={styles.footerText}>Don't receive OTP? </Text>
+        <TouchableOpacity onPress={resendOtp} disabled={isResending}>
+          <Text style={styles.linkText}>
+            {isResending ? "Sending..." : "Resend again"}
+          </Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

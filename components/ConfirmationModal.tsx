@@ -1,6 +1,8 @@
+import { colors } from "@/config/colors";
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator } from "react-native-paper";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 interface ConfirmationModalProps {
@@ -21,6 +23,7 @@ export default function ConfirmationModal({
   onClose,
   onConfirm,
   cancelLabel = "Cancel",
+  isLoading = false,
 }: ConfirmationModalProps) {
   return (
     <Modal
@@ -53,7 +56,11 @@ export default function ConfirmationModal({
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.confirmButton} onPress={onConfirm}>
-              <Text style={styles.confirmButtonText}>{confirmLabel}</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.main} />
+              ) : (
+                <Text style={styles.confirmButtonText}>{confirmLabel}</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

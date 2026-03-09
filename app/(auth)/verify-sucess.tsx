@@ -2,13 +2,23 @@ import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
 import { Image, ImageBackground } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const VerifySuccess: React.FC = () => {
+  const { email } = useLocalSearchParams<{ email?: string }>();
+  const emailValue = Array.isArray(email) ? email[0] : email;
+
   const next = () => {
+    if (emailValue) {
+      router.replace({
+        pathname: "/(auth)/role",
+        params: { email: emailValue },
+      } as any);
+      return;
+    }
     router.replace("/(auth)/role");
   };
 

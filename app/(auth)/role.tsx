@@ -1,11 +1,14 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
-import { useAppDispatch } from "@/redux/hooks";
+import { useUpdateRoleMutation } from "@/redux/api/authApi";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { persistCredentials } from "@/redux/slices/authSlice";
+import { RootState } from "@/redux/store";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   Dimensions,
   StyleSheet,
   Text,
@@ -16,10 +19,60 @@ import {
 const { width } = Dimensions.get("window");
 
 export default function ChooseRoleScreen() {
-  const [selectedRole, setSelectedRole] = useState<
-    "customer" | "driver" | null
-  >(null);
+  const [selectedRole, setSelectedRole] = useState<"rider" | "driver" | null>(
+    null,
+  );
+  const router = useRouter();
+  const { email } = useLocalSearchParams<{ email?: string }>();
+  const emailFromParams = Array.isArray(email) ? email[0] : email;
   const dispatch = useAppDispatch();
+  const [updateRole, { isLoading }] = useUpdateRoleMutation();
+  const existingUser = useAppSelector((state: RootState) => state.auth.user);
+  const existingToken = useAppSelector((state: RootState) => state.auth.token);
+  const emailValue = emailFromParams ?? existingUser?.email;
+
+  const onNext = async () => {
+    if (!selectedRole) {
+      Alert.alert("Role required", "Please select a role first.");
+      return;
+    }
+    if (!emailValue) {
+      Alert.alert("Missing email", "Email is required to set your role.");
+      return;
+    }
+
+    try {
+      const response = await updateRole({
+        role: selectedRole,
+        email: emailValue,
+      }).unwrap();
+
+      await dispatch(
+        persistCredentials({
+          user: {
+            ...(existingUser ?? {}),
+            email: emailValue,
+            role: selectedRole,
+          },
+          token: existingToken ?? "token",
+        }),
+      ).unwrap();
+
+      Alert.alert("Success", response?.data?.message ?? "Role updated");
+      if (selectedRole === "rider") {
+        router.replace("/(auth)/set-profile");
+      } else {
+        router.replace("/(protected)/(driver)");
+      }
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to update role.";
+      Alert.alert("Error", message);
+      console.log("Update role failed:", err);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -37,8 +90,8 @@ export default function ChooseRoleScreen() {
           <RoleCard
             title="Customer"
             image={require("../../assets/images/roleCustomer.svg")}
-            isSelected={selectedRole === "customer"}
-            onPress={() => setSelectedRole("customer")}
+            isSelected={selectedRole === "rider"}
+            onPress={() => setSelectedRole("rider")}
           />
 
           {/* Driver Card */}
@@ -53,21 +106,9 @@ export default function ChooseRoleScreen() {
         <View style={styles.buttonWrapper}>
           <CustomButton
             type="main"
-            text="Next"
-            onClick={() => {
-              if (selectedRole === "customer") {
-                dispatch(
-                  persistCredentials({
-                    user: { role: "customer" },
-                    token: "token",
-                  }),
-                );
-                router.replace("/(auth)/set-profile");
-              } else if (selectedRole === "driver") {
-                dispatch(persistCredentials({ user:{role:"driver"}, token:"token" }));
-                router.replace("/(protected)/(driver)");
-              }
-            }}
+            text={isLoading ? "Please wait..." : "Next"}
+            onClick={onNext}
+            isDisable={isLoading}
           />
         </View>
       </View>
