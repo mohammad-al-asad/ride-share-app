@@ -1,7 +1,6 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
-import { useSendVerificationMutation } from "@/redux/api/authApi";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -18,31 +17,19 @@ import { CustomInput } from "../../components/CustomInput";
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [sendVerification, { isLoading }] = useSendVerificationMutation();
 
   const onNext = async () => {
     if (!email.trim()) {
       Alert.alert("Email required", "Please enter your email.");
       return;
     }
-
-    try {
-      await sendVerification({ email: email.trim() }).unwrap();
-      router.push({
-        pathname: "/(auth)/verify-otp",
-        params: {
-          email: email.trim(),
-          path: "/(auth)/set-password",
-        },
-      });
-    } catch (err: any) {
-      const message =
-        err?.data?.error?.message ??
-        err?.data?.message ??
-        "Failed to send verification code.";
-      Alert.alert("Error", message);
-      console.log("Send verification failed:", err);
-    }
+    router.push({
+      pathname: "/(auth)/verify-otp",
+      params: {
+        email: email.trim(),
+        path: "/(auth)/set-password",
+      },
+    });
   };
 
   return (
@@ -74,9 +61,8 @@ export default function ForgotPasswordScreen() {
             <View style={styles.buttonSpacer}>
               <CustomButton
                 type="main"
-                text={isLoading ? "Sending..." : "Next"}
+                text="Next"
                 onClick={onNext}
-                isDisable={isLoading}
               />
             </View>
 

@@ -44,6 +44,10 @@ export default function LoginScreen() {
     try {
       const response = await login(values).unwrap();
       const { accessToken, refreshToken, user } = response.data;
+      const normalizedRole = (user.role ?? "").trim();
+      const hasSelectedRole =
+        normalizedRole === "rider" || normalizedRole === "driver";
+      const isEmailVerified = Boolean(user.emailVerifiedAt);
 
       await dispatch(
         persistCredentials({
@@ -51,12 +55,34 @@ export default function LoginScreen() {
             id: user._id,
             name: user.name,
             email: user.email,
-            role: user.role,
+            phone: user.phone,
+            role: normalizedRole,
+            profileImage: user.profileImage,
+            emailVerifiedAt: user.emailVerifiedAt ?? null,
           },
           token: accessToken,
           refreshToken,
         }),
       ).unwrap();
+
+      if (!isEmailVerified) {
+        router.replace({
+          pathname: "/(auth)/verify-otp",
+          params: {
+            email: user.email,
+            path: hasSelectedRole ? "/(protected)/(tab)" : "/(auth)/role",
+          },
+        });
+        return;
+      }
+
+      if (!hasSelectedRole) {
+        router.replace({
+          pathname: "/(auth)/role",
+          params: { email: user.email },
+        });
+        return;
+      }
 
       router.replace("/(protected)/(tab)");
     } catch (err: any) {

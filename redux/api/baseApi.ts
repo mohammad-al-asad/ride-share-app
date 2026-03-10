@@ -8,7 +8,6 @@ export const baseApi = createApi({
     baseUrl: process.env.EXPO_PUBLIC_API_URL,
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.token;
-      headers.set("Content-Type", "application/json");
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
       }

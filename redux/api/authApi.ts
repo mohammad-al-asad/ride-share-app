@@ -1,19 +1,40 @@
-import { LoginType } from "@/schemas/authSchema";
+import {
+  ChangePasswordType,
+  LoginType,
+  RegisterType,
+  UpdateProfileInfoType,
+} from "@/schemas/authSchema";
 import { baseApi } from "./baseApi";
+
+type AuthUser = {
+  _id: string;
+  name: string;
+  email: string;
+  role?: string | null;
+  phone?: string;
+  profileImage?: string;
+  emailVerifiedAt?: string | null;
+};
 
 type LoginResponse = {
   success: boolean;
   data: {
     accessToken: string;
     refreshToken: string;
-    user: {
-      _id: string;
-      name: string;
-      email: string;
-      role: string;
-      phone?: string;
-      profileImage?: string;
-    };
+    user: AuthUser;
+  };
+};
+
+type RegisterPayload = RegisterType & {
+  role?: "driver" | "rider";
+};
+
+type RegisterResponse = {
+  success: boolean;
+  data: {
+    accessToken?: string;
+    refreshToken?: string;
+    user?: AuthUser;
   };
 };
 
@@ -29,6 +50,17 @@ type SendVerificationResponse = {
   };
 };
 
+type ForgotPasswordPayload = {
+  email: string;
+};
+
+type ForgotPasswordResponse = {
+  success: boolean;
+  data: {
+    message: string;
+  };
+};
+
 type VerifyEmailPayload = {
   email: string;
   otp: string;
@@ -38,6 +70,9 @@ type VerifyEmailResponse = {
   success: boolean;
   data: {
     message: string;
+    user?: AuthUser;
+    accessToken?: string;
+    refreshToken?: string;
   };
 };
 
@@ -53,9 +88,37 @@ type UpdateRoleResponse = {
   };
 };
 
+type UploadProfileImageResponse = {
+  success: boolean;
+  data: {
+    _id: string;
+    name: string;
+    email: string;
+    role?: string;
+    profileImage?: string;
+  };
+};
+
+type UpdateProfileInfoResponse = {
+  success: boolean;
+  data: AuthUser;
+};
+
+type ChangePasswordPayload = Pick<
+  ChangePasswordType,
+  "currentPassword" | "newPassword"
+>;
+
+type ChangePasswordResponse = {
+  success: boolean;
+  data: {
+    message: string;
+  };
+};
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    register: builder.mutation({
+    register: builder.mutation<RegisterResponse, RegisterPayload>({
       query: (body) => ({
         url: "auth/register",
         method: "POST",
@@ -85,6 +148,16 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    forgotPassword: builder.mutation<
+      ForgotPasswordResponse,
+      ForgotPasswordPayload
+    >({
+      query: (body) => ({
+        url: "auth/forgot-password",
+        method: "POST",
+        body,
+      }),
+    }),
     verifyEmail: builder.mutation<VerifyEmailResponse, VerifyEmailPayload>({
       query: (body) => ({
         url: "auth/verify-email",
@@ -99,6 +172,33 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    uploadProfileImage: builder.mutation<UploadProfileImageResponse, FormData>({
+      query: (body) => ({
+        url: "auth/image-save",
+        method: "PATCH",
+        body,
+      }),
+    }),
+    updateProfileInfo: builder.mutation<
+      UpdateProfileInfoResponse,
+      UpdateProfileInfoType
+    >({
+      query: (body) => ({
+        url: "auth/profileInfo-update",
+        method: "PATCH",
+        body,
+      }),
+    }),
+    changePassword: builder.mutation<
+      ChangePasswordResponse,
+      ChangePasswordPayload
+    >({
+      query: (body) => ({
+        url: "auth/change-password",
+        method: "PATCH",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -107,6 +207,10 @@ export const {
   useLoginMutation,
   useDeleteAccountMutation,
   useSendVerificationMutation,
+  useForgotPasswordMutation,
   useVerifyEmailMutation,
   useUpdateRoleMutation,
+  useUploadProfileImageMutation,
+  useUpdateProfileInfoMutation,
+  useChangePasswordMutation,
 } = authApi;

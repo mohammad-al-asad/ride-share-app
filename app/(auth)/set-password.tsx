@@ -2,6 +2,7 @@ import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router/build/hooks";
 import React from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInUp } from "react-native-reanimated";
@@ -10,6 +11,7 @@ const { width } = Dimensions.get("window");
 
 export default function SetPasswordScreen() {
   const router = useRouter();
+  const { resetToken } = useLocalSearchParams();
 
   return (
     <View style={styles.mainContainer}>
@@ -44,7 +46,12 @@ export default function SetPasswordScreen() {
             type="main"
             text="Next"
             onClick={() => {
-              router.replace("/(auth)/set-password-form");
+              router.replace({
+                pathname: "/(auth)/set-password-form",
+                params: {
+                  resetToken,
+                },
+              });
             }}
           />
         </View>

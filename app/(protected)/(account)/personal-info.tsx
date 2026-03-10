@@ -1,11 +1,19 @@
 import { colors } from "@/config/colors";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
-export default function PersonalInfoScreen({ navigation }: any) {
+export default function PersonalInfoScreen() {
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const name = user?.name?.trim() || "Not set";
+  const email = user?.email?.trim() || "Not set";
+  const phone = user?.phone?.trim() || "Not set";
+  const verifiedText = user?.emailVerifiedAt ? "Verified" : "Not verified";
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -13,14 +21,28 @@ export default function PersonalInfoScreen({ navigation }: any) {
         <View style={styles.infoCard}>
           <View>
             <Text style={styles.label}>NAME</Text>
-            <Text style={styles.value}>Tuval Jane</Text>
+            <Text style={styles.value}>{name}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View>
             <Text style={styles.label}>EMAIL</Text>
-            <Text style={styles.value}>example@gmail.com</Text>
+            <Text style={styles.value}>{email}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View>
+            <Text style={styles.label}>PHONE</Text>
+            <Text style={styles.value}>{phone}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View>
+            <Text style={styles.label}>EMAIL STATUS</Text>
+            <Text style={styles.value}>{verifiedText}</Text>
           </View>
         </View>
 

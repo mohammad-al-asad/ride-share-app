@@ -5,8 +5,11 @@ import {
   useSendVerificationMutation,
   useVerifyEmailMutation,
 } from "@/redux/api/authApi";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { persistCredentials } from "@/redux/slices/authSlice";
+import { RootState } from "@/redux/store";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -22,6 +25,8 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 const VerifyOtpScreen: React.FC = () => {
   const [otp, setOtp] = useState("");
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const existingUser = useAppSelector((state: RootState) => state.auth.user);
   const [sendVerification, { isLoading: isResending }] =
     useSendVerificationMutation();
   const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation();
@@ -31,11 +36,22 @@ const VerifyOtpScreen: React.FC = () => {
   }>();
   const emailValue = Array.isArray(email) ? email[0] : email;
 
-  const verify = async () => {
+  useEffect(() => {
     if (!emailValue) {
-      Alert.alert("Missing email", "Please go back and enter your email again.");
+      Alert.alert(
+        "Missing email",
+        "Please go back and enter your email again.",
+      );
       return;
     }
+    sendVerification({
+      email: emailValue,
+    })
+      .unwrap()
+      .then((res) => console.log("OTP: ", res.data.otpForDev));
+  }, []);
+
+  const verify = async () => {
     if (otp.length !== 4) {
       Alert.alert("Invalid OTP", "Please enter the 4-digit OTP code.");
       return;
@@ -46,50 +62,67 @@ const VerifyOtpScreen: React.FC = () => {
         email: emailValue,
         otp,
       }).unwrap();
+      console.log("Verify email response:", response?.data);
 
-      Alert.alert(
-        "Success",
-        response?.data?.message ?? "Email verified",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              if (path) {
-                if (emailValue) {
-                  router.replace({
-                    pathname: path as any,
-                    params: { email: emailValue },
-                  } as any);
-                } else {
-                  router.replace(path as any);
-                }
-                return;
-              }
-              router.replace("/(auth)/login");
+      const token = response?.data?.accessToken;
+      const refreshToken = response?.data?.refreshToken;
+      const user = response?.data?.user;
+
+      if (token && refreshToken) {
+        await dispatch(
+          persistCredentials({
+            user: {
+              id: user?._id ?? existingUser?.id,
+              name: user?.name ?? existingUser?.name,
+              email: user?.email ?? existingUser?.email,
+              phone: user?.phone ?? existingUser?.phone,
+              role: user?.role ?? existingUser?.role,
+              profileImage: user?.profileImage ?? existingUser?.profileImage,
+              emailVerifiedAt:
+                user?.emailVerifiedAt ?? existingUser?.emailVerifiedAt ?? null,
             },
-          },
-        ],
-        { cancelable: false },
-      );
+            token,
+            refreshToken,
+          }),
+        ).unwrap();
+      }
+
+      router.replace({
+        pathname: path as any,
+        params: { email: emailValue },
+      } as any);
     } catch (err: any) {
       const message =
         err?.data?.error?.message ??
         err?.data?.message ??
         "Invalid or expired OTP";
-      Alert.alert("Verification failed", message);
+      router.replace({
+        pathname: "/(auth)/verify-fail",
+        params: {
+          email: emailValue,
+          message: message,
+          path,
+        },
+      });
       console.log("Verify email failed:", err);
     }
   };
 
   const resendOtp = async () => {
     if (!emailValue) {
-      Alert.alert("Missing email", "Please go back and enter your email again.");
+      Alert.alert(
+        "Missing email",
+        "Please go back and enter your email again.",
+      );
       return;
     }
 
     try {
       const response = await sendVerification({ email: emailValue }).unwrap();
-      Alert.alert("OTP sent", response?.data?.message ?? "Verification code sent.");
+      Alert.alert(
+        "OTP sent",
+        response?.data?.message ?? "Verification code sent.",
+      );
     } catch (err: any) {
       const message =
         err?.data?.error?.message ??
@@ -109,8 +142,8 @@ const VerifyOtpScreen: React.FC = () => {
       <View style={styles.inner}>
         <Text style={styles.heading}>Verify Code</Text>
         <Text style={styles.description}>
-          We sent OTP code to your email {emailValue ?? "example@gmail.com"}. Enter
-          the code below to verify.
+          We sent OTP code to your email {emailValue ?? "example@gmail.com"}.
+          Enter the code below to verify.
         </Text>
 
         <OtpInput
@@ -131,7 +164,7 @@ const VerifyOtpScreen: React.FC = () => {
         isDisable={isVerifying}
       />
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't receive OTP? </Text>
+        <Text style={styles.footerText}>Don&apos;t receive OTP? </Text>
         <TouchableOpacity onPress={resendOtp} disabled={isResending}>
           <Text style={styles.linkText}>
             {isResending ? "Sending..." : "Resend again"}

@@ -1,14 +1,19 @@
 import AuthBackground from "@/components/AuthBackground";
 import ConfirmationModal from "@/components/ConfirmationModal";
 import { colors } from "@/config/colors";
-import { useDeleteAccountMutation } from "@/redux/api/authApi";
+import {
+  useDeleteAccountMutation,
+  useUploadProfileImageMutation,
+} from "@/redux/api/authApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { performLogout } from "@/redux/slices/authSlice";
+import { performLogout, persistCredentials } from "@/redux/slices/authSlice";
 import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -16,23 +21,99 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import ImagePicker, {
+  type Image as CropPickerImage,
+} from "react-native-image-crop-picker";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+
+function getFileName(image: CropPickerImage) {
+  if (image.filename) return image.filename;
+  const extension = image.mime?.split("/")[1] ?? "jpg";
+  return `profile-${Date.now()}.${extension}`;
+}
 
 export default function ProfileScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState(false);
   const user = useAppSelector((state: RootState) => state.auth.user);
+  const token = useAppSelector((state: RootState) => state.auth.token);
+  const refreshToken = useAppSelector(
+    (state: RootState) => state.auth.refreshToken,
+  );
   const isDriver = user?.role === "driver";
+  const userName = user?.name?.trim() || "User";
+  const userEmail = user?.email?.trim();
+  const roleLabel =
+    user?.role && user.role.length > 0
+      ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}`
+      : null;
   const dispatch = useAppDispatch();
   const [deleteAccount, { isLoading }] = useDeleteAccountMutation();
+  const [uploadProfileImage, { isLoading: isUploading }] =
+    useUploadProfileImageMutation();
 
   const handleDelteAccount = async () => {
     try {
-      await deleteAccount().unwrap();
+      await deleteAccount(undefined).unwrap();
       dispatch(performLogout());
       router.replace("/(auth)/login");
     } catch (err: any) {
       Alert.alert("Error", err.data.error.message);
       console.log("Deletion failed:", err);
+    }
+  };
+
+  const uploadImage = async (image: CropPickerImage) => {
+    try {
+      const formData = new FormData();
+      formData.append("image", {
+        uri: image.path,
+        type: image.mime,
+        name: getFileName(image),
+      } as any);
+
+      const response = await uploadProfileImage(formData).unwrap();
+      const profileImage = response?.data?.profileImage;
+
+      if (profileImage && user) {
+        await dispatch(
+          persistCredentials({
+            user: {
+              ...user,
+              profileImage,
+            },
+            token: token,
+            refreshToken: refreshToken,
+          }),
+        ).unwrap();
+      }
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to upload profile image.";
+      Alert.alert("Upload failed", message);
+      console.log("Account image upload failed:", err);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.openPicker({
+        mediaType: "photo",
+        cropping: true,
+        width: 400,
+        height: 400,
+      });
+
+      if (!Array.isArray(result) && result.mime?.startsWith("image/")) {
+        await uploadImage(result);
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code !== "E_PICKER_CANCELLED") {
+        Alert.alert("Image error", "Could not select image. Please try again.");
+        console.log("Image pick failed:", err);
+      }
     }
   };
 
@@ -52,23 +133,41 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarWrapper}>
             <View style={styles.avatarCircle}>
-              <Ionicons
-                name="person-outline"
-                size={scale(40)}
-                color="#6B7280"
-              />
+              {user?.profileImage ? (
+                <Image
+                  source={{ uri: user.profileImage }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons
+                  name="person-outline"
+                  size={scale(40)}
+                  color="#6B7280"
+                />
+              )}
             </View>
-            <TouchableOpacity style={styles.cameraButton}>
-              <Ionicons name="camera" size={scale(14)} color="#FFFFFF" />
+            <TouchableOpacity
+              style={styles.cameraButton}
+              onPress={pickImage}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="camera" size={scale(14)} color="#FFFFFF" />
+              )}
             </TouchableOpacity>
           </View>
           <View style={styles.nameRow}>
-            <Text style={styles.userName}>John Smith</Text>
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={14} color="#FBBF24" />
-              <Text style={styles.ratingText}>4.7</Text>
-            </View>
+            <Text style={styles.userName}>{userName}</Text>
+            {roleLabel ? (
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>{roleLabel}</Text>
+              </View>
+            ) : null}
           </View>
+          <Text style={styles.userEmail}>{userEmail}</Text>
         </View>
 
         {/* Settings Group */}
@@ -175,7 +274,7 @@ export default function ProfileScreen() {
         onClose={() => setDeleteConfirmation(false)}
         onConfirm={() => handleDelteAccount()}
         visible={deleteConfirmation}
-        isLoading ={isLoading}
+        isLoading={isLoading}
         title="Are you sure you want to delete?"
         message="This action is permanent, and you will lose all your data and history. If you proceed, you won’t be able to recover your account."
       />
@@ -245,6 +344,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
   },
   cameraButton: {
     position: "absolute",
@@ -268,15 +372,26 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1A1A1A",
   },
-  ratingBadge: {
+  roleBadge: {
     flexDirection: "row",
     alignItems: "center",
     marginLeft: scale(8),
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(3),
+    borderRadius: scale(999),
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#D7DEFF",
   },
-  ratingText: {
-    fontSize: moderateScale(14),
+  roleText: {
+    fontSize: moderateScale(12),
+    fontWeight: "600",
+    color: colors.main,
+  },
+  userEmail: {
+    marginTop: verticalScale(4),
+    fontSize: moderateScale(13),
     color: "#6B7280",
-    marginLeft: scale(2),
   },
   sectionTitle: {
     fontSize: moderateScale(16),

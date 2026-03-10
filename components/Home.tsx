@@ -1,5 +1,7 @@
 import AuthBackground from "@/components/AuthBackground";
 import { colors } from "@/config/colors";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
@@ -28,6 +30,8 @@ const RECENT_LOCATIONS = [
 ];
 
 export default function HomeScreen() {
+    const user = useAppSelector((state: RootState) => state.auth.user);
+    const userName = user?.name?.trim() || "User";
   return (
     <View style={styles.mainContainer}>
       {/* Background Grid */}
@@ -41,7 +45,7 @@ export default function HomeScreen() {
             style={styles.smallLogo}
             contentFit="contain"
           />
-          <Text style={styles.welcomeText}>Welcome, Harish!</Text>
+          <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
         </View>
 
         {/* Search Bar Section */}

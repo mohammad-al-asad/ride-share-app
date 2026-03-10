@@ -2,18 +2,27 @@ import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
 import { Image } from "expo-image";
+import { router } from "expo-router";
+import { useLocalSearchParams } from "expo-router/build/hooks";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const VerifyOtpScreen: React.FC = () => {
+  const params = useLocalSearchParams();
   const retry = () => {
-    console.log("verify");
+    router.replace({
+      pathname: "/(auth)/verify-otp",
+      params: {
+        email: params.email,
+        path: params.path,
+      },
+    });
   };
 
   return (
     <View style={styles.container}>
-      <AuthBackground/>
+      <AuthBackground />
 
       <View
         style={{

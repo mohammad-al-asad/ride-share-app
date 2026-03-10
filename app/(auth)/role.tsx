@@ -29,6 +29,9 @@ export default function ChooseRoleScreen() {
   const [updateRole, { isLoading }] = useUpdateRoleMutation();
   const existingUser = useAppSelector((state: RootState) => state.auth.user);
   const existingToken = useAppSelector((state: RootState) => state.auth.token);
+  const existingRefreshToken = useAppSelector(
+    (state: RootState) => state.auth.refreshToken,
+  );
   const emailValue = emailFromParams ?? existingUser?.email;
 
   const onNext = async () => {
@@ -54,13 +57,18 @@ export default function ChooseRoleScreen() {
             email: emailValue,
             role: selectedRole,
           },
-          token: existingToken ?? "token",
+          token: existingToken ?? undefined,
+          refreshToken: existingRefreshToken ?? undefined,
         }),
       ).unwrap();
 
-      Alert.alert("Success", response?.data?.message ?? "Role updated");
       if (selectedRole === "rider") {
-        router.replace("/(auth)/set-profile");
+        if (existingUser?.profileImage) {
+          router.replace("/(protected)/(tab)");
+          return;
+        } else {
+          router.replace("/(auth)/set-profile");
+        }
       } else {
         router.replace("/(protected)/(driver)");
       }

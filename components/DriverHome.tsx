@@ -10,8 +10,12 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import { MarkerCircle } from "./AnimatedMarker";
 import AuthBackground from "./AuthBackground";
 import RequiredActions from "./RequiredActions";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 
 export default function HomeScreen() {
+    const user = useAppSelector((state: RootState) => state.auth.user);
+  const userName = user?.name?.trim() || "User";
   const [driverLocation, setDriverLocation] = useState<any>(null);
   const [heading, setHeading] = useState<number>(0);
   const mapRef = useRef<MapView | null>(null);
@@ -66,7 +70,7 @@ export default function HomeScreen() {
             style={styles.smallLogo}
             contentFit="contain"
           />
-          <Text style={styles.welcomeText}>Welcome, Harish!</Text>
+          <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
         </View>
 
         {/* Card */}

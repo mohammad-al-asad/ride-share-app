@@ -1,12 +1,96 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
+import { useUploadProfileImageMutation } from "@/redux/api/authApi";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { persistCredentials } from "@/redux/slices/authSlice";
+import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import ImagePicker, {
+  type Image as CropPickerImage,
+} from "react-native-image-crop-picker";
+
+function getFileName(image: CropPickerImage) {
+  if (image.filename) return image.filename;
+  const extension = image.mime?.split("/")[1] ?? "jpg";
+  return `profile-${Date.now()}.${extension}`;
+}
 
 export default function AddPhotoScreen() {
   const router = useRouter();
+  const [selectedImage, setSelectedImage] = useState<CropPickerImage | null>(
+    null,
+  );
+  const [uploadProfileImage, { isLoading: isUploading }] =
+    useUploadProfileImageMutation();
+  const dispatch = useAppDispatch();
+  const existingUser = useAppSelector((state: RootState) => state.auth.user);
+  const existingToken = useAppSelector((state: RootState) => state.auth.token);
+  const previewUri = selectedImage?.path ?? existingUser?.profileImage;
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.openPicker({
+        mediaType: "photo",
+        cropping: true,
+        width: 400,
+        height: 400,
+      });
+
+      if (!Array.isArray(result) && result.mime?.startsWith("image/")) {
+        setSelectedImage(result);
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code !== "E_PICKER_CANCELLED") {
+        Alert.alert("Image error", "Could not select image. Please try again.");
+        console.log("Image pick failed:", err);
+      }
+    }
+  };
+
+  const handleGetStarted = async () => {
+    if (!selectedImage) {
+      router.replace("/(protected)/(tab)");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("image", {
+        uri: selectedImage.path,
+        type: selectedImage.mime,
+        name: getFileName(selectedImage),
+      } as any);
+
+      const response = await uploadProfileImage(formData).unwrap();
+      const profileImage = response?.data?.profileImage;
+
+      if (profileImage && existingUser && existingToken) {
+        await dispatch(
+          persistCredentials({
+            user: {
+              ...existingUser,
+              profileImage,
+            },
+            token: existingToken,
+          }),
+        ).unwrap();
+      }
+
+      router.replace("/(protected)/(tab)");
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to upload image.";
+      Alert.alert("Upload failed", message);
+      console.log("Profile image upload failed:", err);
+    }
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -31,24 +115,37 @@ export default function AddPhotoScreen() {
           {/* Profile Placeholder */}
           <View style={styles.imagePickerContainer}>
             <View style={styles.profileCircle}>
-              <Ionicons name="person-outline" size={80} color="#000" />
+              {previewUri ? (
+                <Image
+                  source={{ uri: previewUri }}
+                  style={styles.profileImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Ionicons name="person-outline" size={80} color="#000" />
+              )}
             </View>
-            <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.cameraButton}
+              activeOpacity={0.8}
+              onPress={pickImage}
+              disabled={isUploading}
+            >
               <Ionicons name="camera-outline" size={20} color="black" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Action Button */}
-        <View style={styles.buttonWrapper}>
-          <CustomButton
-            type="main"
-            text="Get Started"
-            onClick={() => {
-              router.replace("/(protected)/(tab)");
-            }}
-          />
-        </View>
+        {selectedImage && (
+          <View style={styles.buttonWrapper}>
+            <CustomButton
+              type="main"
+              text={isUploading ? "Uploading..." : "Get Started"}
+              onClick={handleGetStarted}
+              isDisable={isUploading}
+            />
+          </View>
+        )}
       </View>
     </View>
   );
@@ -106,6 +203,11 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
   },
   cameraButton: {
     position: "absolute",

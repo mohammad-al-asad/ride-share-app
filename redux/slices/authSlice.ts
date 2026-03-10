@@ -5,7 +5,10 @@ export interface User {
   id?: string;
   email?: string;
   name?: string;
-  role: string;
+  phone?: string;
+  role?: string;
+  profileImage?: string;
+  emailVerifiedAt?: string | null;
 }
 
 interface AuthState {
@@ -35,17 +38,25 @@ export const persistCredentials = createAsyncThunk(
     refreshToken,
   }: {
     user: User;
-    token: string;
-    refreshToken?: string;
+    token?: string | null;
+    refreshToken?: string | null;
   }) => {
     await AsyncStorage.setItem("user", JSON.stringify(user));
-    await AsyncStorage.setItem("token", token);
-    if (refreshToken) {
-      await AsyncStorage.setItem("refreshToken", refreshToken);
-    } else {
-      await AsyncStorage.removeItem("refreshToken");
+    if (token !== undefined) {
+      if (token) {
+        await AsyncStorage.setItem("token", token);
+      } else {
+        await AsyncStorage.removeItem("token");
+      }
     }
-    return { user, token, refreshToken: refreshToken ?? null };
+    if (refreshToken !== undefined) {
+      if (refreshToken) {
+        await AsyncStorage.setItem("refreshToken", refreshToken);
+      } else {
+        await AsyncStorage.removeItem("refreshToken");
+      }
+    }
+    return { user, token, refreshToken };
   },
 );
 
@@ -96,15 +107,19 @@ const authSlice = createSlice({
           state,
           action: PayloadAction<{
             user: User;
-            token: string;
-            refreshToken: string | null;
+            token?: string | null;
+            refreshToken?: string | null;
           }>,
         ) => {
           state.loading = false;
           state.user = action.payload.user;
-          state.token = action.payload.token;
-          state.refreshToken = action.payload.refreshToken;
-          state.isAuthenticated = true;
+          if (action.payload.token !== undefined) {
+            state.token = action.payload.token;
+          }
+          if (action.payload.refreshToken !== undefined) {
+            state.refreshToken = action.payload.refreshToken;
+          }
+          state.isAuthenticated = Boolean(state.token);
         },
       )
       .addCase(loadCredentials.fulfilled, (state, action) => {

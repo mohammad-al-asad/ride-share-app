@@ -1,10 +1,9 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
-import {
-  useRegisterMutation,
-  useSendVerificationMutation,
-} from "@/redux/api/authApi";
+import { useRegisterMutation } from "@/redux/api/authApi";
+import { useAppDispatch } from "@/redux/hooks";
+import { persistCredentials } from "@/redux/slices/authSlice";
 import { registerSchema, RegisterType } from "@/schemas/authSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Image } from "expo-image";
@@ -13,8 +12,6 @@ import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,11 +22,8 @@ import { CustomInput } from "../../components/CustomInput";
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [register, { isLoading: isRegistering }] = useRegisterMutation();
-  const [sendVerification, { isLoading: isSendingOtp }] =
-    useSendVerificationMutation();
-  const isIOS = Platform.OS === "ios";
-  const isSubmitting = isRegistering || isSendingOtp;
 
   const {
     control,
@@ -47,15 +41,26 @@ export default function SignUpScreen() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await register({
+      const registerResponse = await register({
         ...values,
-        role: "driver",
       }).unwrap();
-      await sendVerification({
-        email: values.email,
-      }).unwrap();
+      console.log(registerResponse?.data);
 
-      router.push({
+      const user = registerResponse?.data?.user;
+      if (user) {
+        await dispatch(
+          persistCredentials({
+            user: {
+              id: user._id,
+              name: user.name,
+              email: user.email,
+              phone: user.phone,
+            },
+          }),
+        ).unwrap();
+      }
+
+      router.replace({
         pathname: "/(auth)/verify-otp",
         params: {
           email: values.email,
@@ -77,15 +82,9 @@ export default function SignUpScreen() {
       {/* Background stays static while content scrolls */}
       <AuthBackground />
 
-      <KeyboardAvoidingView
-        style={styles.keyboardContainer}
-        behavior={isIOS ? "padding" : "height"}
-        keyboardVerticalOffset={0}
-      >
+      <View style={styles.keyboardContainer}>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={isIOS ? "interactive" : "on-drag"}
           showsVerticalScrollIndicator={false}
         >
           <Image
@@ -173,9 +172,9 @@ export default function SignUpScreen() {
             <View style={styles.buttonSpacer}>
               <CustomButton
                 type="main"
-                text={isSubmitting ? "Please wait..." : "Sign Up"}
+                text={isRegistering ? "Please wait..." : "Sign Up"}
                 onClick={onSubmit}
-                isDisable={isSubmitting}
+                isDisable={isRegistering}
               />
             </View>
           </View>
@@ -195,7 +194,7 @@ export default function SignUpScreen() {
             </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
@@ -211,7 +210,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 25,
-    paddingTop: 35,
+    paddingTop: 45,
     paddingBottom: 30,
     alignItems: "center",
   },
@@ -262,6 +261,7 @@ const styles = StyleSheet.create({
   },
   termsContainer: {
     marginTop: 20,
+    marginBottom: 50,
     width: "100%",
   },
   termsText: {
