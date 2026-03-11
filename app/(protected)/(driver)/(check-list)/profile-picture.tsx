@@ -1,35 +1,110 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
+import { useUploadProfileImageMutation } from "@/redux/api/authApi";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { persistCredentials } from "@/redux/slices/authSlice";
+import { RootState } from "@/redux/store";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import ImagePicker from "react-native-image-crop-picker";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import ImagePicker, {
+  type Image as CropPickerImage,
+} from "react-native-image-crop-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const INSTRUCTIONS = [
   "Face the camera directly with your eyes and mouth clearly visible",
-  "make sure the photo is well lit, free of glare, and in focus",
+  "Make sure the photo is well lit, free of glare, and in focus",
   "No photos of a photo, filters, or alterations",
   "Example image is given below for better understanding",
 ];
 
+function getFileName(image: CropPickerImage) {
+  if (image.filename) return image.filename;
+  const extension = image.mime?.split("/")[1] ?? "jpg";
+  return `profile-${Date.now()}.${extension}`;
+}
+
 export default function TakeProfilePhotoScreen() {
-  const [image, setImage] = useState<string>();
-  async function openCamera() {
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const token = useAppSelector((state: RootState) => state.auth.token);
+  const refreshToken = useAppSelector(
+    (state: RootState) => state.auth.refreshToken,
+  );
+  const [image, setImage] = useState<CropPickerImage | null>(null);
+  const [uploadProfileImage, { isLoading: isUploading }] =
+    useUploadProfileImageMutation();
+
+  const existingImage = user?.profileImage?.trim() ?? "";
+  const imagePreview = image?.path ?? existingImage;
+  const hasExistingImage = Boolean(existingImage);
+  const hasSelectedImage = Boolean(image);
+
+  async function openPicker() {
     try {
-      const result = await ImagePicker.openCamera({
-        height: 200,
-        width: 200,
-        cropping: true,
-        freeStyleCropEnabled: true,
+      const result = await ImagePicker.openPicker({
         mediaType: "photo",
-        cropperToolbarTitle: "Adjust Document",
+        cropping: true,
+        width: 400,
+        height: 400,
         cropperActiveWidgetColor: "#6372ff",
       });
-      setImage(result.path);
-    } catch (e) {
-      console.log(e);
+
+      if (!Array.isArray(result) && result.mime?.startsWith("image/")) {
+        setImage(result);
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code !== "E_PICKER_CANCELLED") {
+        Alert.alert("Image error", "Could not select image. Please try again.");
+        console.log("Profile image pick failed:", err);
+      }
+    }
+  }
+
+  async function handleSave() {
+    if (!image || isUploading) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("image", {
+        uri: image.path,
+        type: image.mime ?? "image/jpeg",
+        name: getFileName(image),
+      } as any);
+
+      const response = await uploadProfileImage(formData).unwrap();
+      const profileImage = response?.data?.profileImage;
+
+      if (profileImage && user) {
+        await dispatch(
+          persistCredentials({
+            user: {
+              ...user,
+              profileImage,
+            },
+            token,
+            refreshToken,
+          }),
+        ).unwrap();
+      }
+
+      Alert.alert("Success", "Profile photo updated successfully.", [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to upload profile image.";
+      Alert.alert("Upload failed", message);
+      console.log("Profile image upload failed:", err);
     }
   }
 
@@ -37,37 +112,48 @@ export default function TakeProfilePhotoScreen() {
     <SafeAreaView style={styles.container}>
       <AuthBackground />
 
-      <View style={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.headerTitle}>Take your profile photo</Text>
 
-        {/* Instructions List */}
         <View style={styles.instructionContainer}>
           {INSTRUCTIONS.map((text, index) => (
             <View key={index} style={styles.instructionRow}>
-              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.bullet}>*</Text>
               <Text style={styles.instructionText}>{text}</Text>
             </View>
           ))}
         </View>
 
-        {/* Example Image Preview */}
         <View style={styles.imagePreviewContainer}>
           <Image
             source={
-              image
-                ? { uri: image }
+              imagePreview
+                ? { uri: imagePreview }
                 : require("@/assets/images/demo-profile.png")
             }
             style={styles.sampleImage}
-            contentFit="contain"
+            contentFit="cover"
           />
         </View>
 
-        {/* Action Button */}
         <View style={styles.buttonWrapper}>
-          <CustomButton text="Take Photo" onClick={openCamera} type="main" />
+          <CustomButton
+            text={
+              hasSelectedImage
+                ? "Save"
+                : hasExistingImage
+                  ? "Retake Photo"
+                  : "Upload Photo"
+            }
+            onClick={hasSelectedImage ? handleSave : openPicker}
+            type="main"
+            isLoading={isUploading}
+          />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -112,12 +198,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: verticalScale(40),
+    height: scale(210),
+
   },
   sampleImage: {
     borderWidth: 1.5,
     borderColor: "#DAD6FF",
     width: scale(200),
     height: scale(200),
+    borderRadius: scale(100),
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
   },
   buttonWrapper: {
     marginTop: "auto",

@@ -1,17 +1,51 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
+import {
+  useGetVehicleInsuranceQuery,
+  useUploadVehicleInsuranceMutation,
+} from "@/redux/api/onboardingApi";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import ImagePicker from "react-native-image-crop-picker";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import ImagePicker, {
+  type Image as CropPickerImage,
+} from "react-native-image-crop-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
+function getFileName(image: CropPickerImage, prefix: string) {
+  if (image.filename) return image.filename;
+  const extension = image.mime?.split("/")[1] ?? "jpg";
+  return `${prefix}-${Date.now()}.${extension}`;
+}
+
+function createImageFormData(image: CropPickerImage, prefix: string) {
+  const formData = new FormData();
+  formData.append("image", {
+    uri: image.path,
+    type: image.mime ?? "image/jpeg",
+    name: getFileName(image, prefix),
+  } as any);
+  return formData;
+}
+
 export default function VehicleInsurancePaperScreen() {
-  const [image, setImage] = useState<string>();
-  async function openCamera() {
+  const router = useRouter();
+  const [image, setImage] = useState<CropPickerImage | null>(null);
+  const { data: vehicleInsurance, refetch: refetchVehicleInsurance } =
+    useGetVehicleInsuranceQuery();
+  const [uploadVehicleInsurance, { isLoading: isUploading }] =
+    useUploadVehicleInsuranceMutation();
+
+  const existingImage = vehicleInsurance?.data?.vehicleInsurance?.fileUrl ?? "";
+  const imagePreview = image?.path ?? existingImage;
+  const hasExistingImage = Boolean(existingImage);
+  const hasSelectedImage = Boolean(image);
+
+  async function openPicker() {
     try {
-      const result = await ImagePicker.openCamera({
+      const result = await ImagePicker.openPicker({
         width: scale(300),
         height: verticalScale(350),
         cropping: true,
@@ -20,9 +54,48 @@ export default function VehicleInsurancePaperScreen() {
         cropperToolbarTitle: "Adjust Document",
         cropperActiveWidgetColor: "#6372ff",
       });
-      setImage(result.path);
-    } catch (e) {
-      console.log(e);
+
+      if (!Array.isArray(result) && result.mime?.startsWith("image/")) {
+        setImage(result);
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code !== "E_PICKER_CANCELLED") {
+        Alert.alert("Image error", "Could not select image. Please try again.");
+        console.log("Vehicle insurance image pick failed:", err);
+      }
+    }
+  }
+
+  async function handleSave() {
+    if (isUploading || !imagePreview) return;
+
+    if (!image) {
+      router.back();
+      return;
+    }
+
+    try {
+      const response = await uploadVehicleInsurance(
+        createImageFormData(image, "vehicle-insurance"),
+      ).unwrap();
+      const message =
+        response?.data?.message ?? "Vehicle insurance uploaded successfully.";
+
+      refetchVehicleInsurance();
+      Alert.alert("Success", message, [
+        {
+          text: "OK",
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to upload vehicle insurance.";
+      Alert.alert("Upload failed", message);
+      console.log("Vehicle insurance upload failed:", err);
     }
   }
 
@@ -30,8 +103,10 @@ export default function VehicleInsurancePaperScreen() {
     <SafeAreaView style={styles.container}>
       <AuthBackground />
 
-      <View style={styles.scrollContent}>
-        {/* Header Section */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>
             Take a photo of your Vehicle Insurance Paper
@@ -41,12 +116,11 @@ export default function VehicleInsurancePaperScreen() {
           </Text>
         </View>
 
-        {/* Instructional Illustration */}
         <View style={styles.illustrationContainer}>
           <Image
             source={
-              image
-                ? { uri: image }
+              imagePreview
+                ? { uri: imagePreview }
                 : require("@/assets/images/registration-ph.png")
             }
             style={styles.illustration}
@@ -54,11 +128,21 @@ export default function VehicleInsurancePaperScreen() {
           />
         </View>
 
-        {/* Action Button */}
         <View style={styles.buttonWrapper}>
-          <CustomButton text="Take Photo" onClick={openCamera} type="main" />
+          <CustomButton
+            text={
+              hasSelectedImage
+                ? "Save"
+                : hasExistingImage
+                  ? "Retake Photo"
+                  : "Upload Photo"
+            }
+            onClick={hasSelectedImage ? handleSave : openPicker}
+            type="main"
+            isLoading={isUploading}
+          />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

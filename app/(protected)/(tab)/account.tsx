@@ -150,7 +150,14 @@ export default function ProfileScreen() {
             </View>
             <TouchableOpacity
               style={styles.cameraButton}
-              onPress={pickImage}
+              onPress={
+                user?.role === "rider"
+                  ? pickImage
+                  : () =>
+                      router.push(
+                        "/(protected)/(driver)/(check-list)/profile-picture",
+                      )
+              }
               disabled={isUploading}
             >
               {isUploading ? (

@@ -87,8 +87,6 @@ export default function DriverLicenseUploadScreen() {
   const isSaving = isUploadingFront || isUploadingBack;
   const isDoneEnabled = Boolean(frontPreview && backPreview);
 
-  console.log(frontPreview, backPreview);
-
   async function openPicker(setImage: (image: CropPickerImage) => void) {
     try {
       const result = await ImagePicker.openPicker({

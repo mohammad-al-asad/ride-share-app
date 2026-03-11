@@ -28,6 +28,91 @@ type DriverLicensePhotosResponse = {
   };
 };
 
+type DriverDocumentReadResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    vehicleInsurance?: DriverLicensePhotoDocument | null;
+  };
+};
+
+type DriverVehicleRegistrationReadResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    vehicleRegistration?: DriverLicensePhotoDocument | null;
+  };
+};
+
+type StripeInfoResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    stripeAccountId?: string | null;
+    stripeConnected?: boolean;
+  };
+};
+
+type ConnectStripeRequest = {
+  stripeAccountId: string;
+};
+
+type ConnectStripeResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    message?: string;
+    stripeAccountId?: string;
+    stripeConnected?: boolean;
+  };
+};
+
+type VehicleInfo = {
+  _id: string;
+  brand: string;
+  model: string;
+  year: number;
+  type: string;
+  priceRange: number;
+  size: string;
+  seats: number;
+  licensePlate: string;
+  tier?: string;
+  isActive?: boolean;
+  approved?: boolean;
+  driverId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type VehicleInfoResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    vehicle?: VehicleInfo | null;
+  };
+};
+
+type SaveVehicleInfoRequest = {
+  brand: string;
+  model: string;
+  year: number;
+  type: string;
+  priceRange: number;
+  size: string;
+  seats: number;
+  licensePlate: string;
+};
+
+type SaveVehicleInfoResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    message?: string;
+    vehicle?: VehicleInfo;
+  };
+};
+
 type UploadDriverDocumentResponse = {
   success: boolean;
   message: string;
@@ -59,6 +144,33 @@ export const onboardingApi = baseApi.injectEndpoints({
         method: "GET",
       }),
     }),
+    getVehicleInsurance: builder.query<DriverDocumentReadResponse, void>({
+      query: () => ({
+        url: "driverOnboardingRead/vehicle-insurance",
+        method: "GET",
+      }),
+    }),
+    getVehicleRegistration: builder.query<
+      DriverVehicleRegistrationReadResponse,
+      void
+    >({
+      query: () => ({
+        url: "driverOnboardingRead/vehicle-registration",
+        method: "GET",
+      }),
+    }),
+    getStripeInfo: builder.query<StripeInfoResponse, void>({
+      query: () => ({
+        url: "driverOnboardingRead/stripe",
+        method: "GET",
+      }),
+    }),
+    getVehicleInfo: builder.query<VehicleInfoResponse, void>({
+      query: () => ({
+        url: "driverOnboardingRead/vehicle-info",
+        method: "GET",
+      }),
+    }),
     uploadDriverLicenseFront: builder.mutation<UploadDriverDocumentResponse, FormData>(
       {
         query: (body) => ({
@@ -77,12 +189,57 @@ export const onboardingApi = baseApi.injectEndpoints({
         }),
       },
     ),
+    uploadVehicleInsurance: builder.mutation<
+      UploadDriverDocumentResponse,
+      FormData
+    >({
+      query: (body) => ({
+        url: "driverOnboarding/vehicle-insurance",
+        method: "POST",
+        body,
+      }),
+    }),
+    uploadVehicleRegistration: builder.mutation<
+      UploadDriverDocumentResponse,
+      FormData
+    >({
+      query: (body) => ({
+        url: "driverOnboarding/vehicle-registration",
+        method: "POST",
+        body,
+      }),
+    }),
+    connectStripe: builder.mutation<ConnectStripeResponse, ConnectStripeRequest>({
+      query: (body) => ({
+        url: "driverOnboarding/connect-stripe",
+        method: "POST",
+        body,
+      }),
+    }),
+    saveVehicleInfo: builder.mutation<
+      SaveVehicleInfoResponse,
+      SaveVehicleInfoRequest
+    >({
+      query: (body) => ({
+        url: "driverOnboarding/vehicle",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
   useGetDriverOnboardingStatusQuery,
   useGetDriverLicensePhotosQuery,
+  useGetVehicleInsuranceQuery,
+  useGetVehicleRegistrationQuery,
+  useGetStripeInfoQuery,
+  useGetVehicleInfoQuery,
   useUploadDriverLicenseFrontMutation,
   useUploadDriverLicenseBackMutation,
+  useUploadVehicleInsuranceMutation,
+  useUploadVehicleRegistrationMutation,
+  useConnectStripeMutation,
+  useSaveVehicleInfoMutation,
 } = onboardingApi;
