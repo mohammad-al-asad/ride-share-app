@@ -4,6 +4,7 @@ import { colors } from "@/config/colors";
 import {
   useSendVerificationMutation,
   useVerifyEmailMutation,
+  useVerifyResetOtpMutation,
 } from "@/redux/api/authApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { persistCredentials } from "@/redux/slices/authSlice";
@@ -30,11 +31,14 @@ const VerifyOtpScreen: React.FC = () => {
   const [sendVerification, { isLoading: isResending }] =
     useSendVerificationMutation();
   const [verifyEmail, { isLoading: isVerifying }] = useVerifyEmailMutation();
+  const [verifyResetOtp, { isLoading: isVerifyingReset }] =
+    useVerifyResetOtpMutation();
   const { path, email } = useLocalSearchParams<{
     path?: string;
     email?: string;
   }>();
   const emailValue = Array.isArray(email) ? email[0] : email;
+  const isResetFlow = path === "/(auth)/set-password";
 
   useEffect(() => {
     if (!emailValue) {
@@ -44,12 +48,57 @@ const VerifyOtpScreen: React.FC = () => {
       );
       return;
     }
-    sendVerification({
-      email: emailValue,
-    })
-      .unwrap()
-      .then((res) => console.log("OTP: ", res.data.otpForDev));
   }, []);
+
+  async function verifyEmailFn() {
+    const response = await verifyEmail({
+      email: emailValue,
+      otp,
+    }).unwrap();
+
+    const token = response?.data?.accessToken;
+    const refreshToken = response?.data?.refreshToken;
+    const user = response?.data?.user;
+
+    if (token && refreshToken) {
+      await dispatch(
+        persistCredentials({
+          user: {
+            id: user?._id ?? existingUser?.id,
+            name: user?.name ?? existingUser?.name,
+            email: user?.email ?? existingUser?.email,
+            phone: user?.phone ?? existingUser?.phone,
+            role: user?.role ?? existingUser?.role,
+            profileImage: user?.profileImage ?? existingUser?.profileImage,
+            emailVerifiedAt:
+              user?.emailVerifiedAt ?? existingUser?.emailVerifiedAt ?? null,
+          },
+          token,
+          refreshToken,
+        }),
+      ).unwrap();
+    }
+
+    router.replace({
+      pathname: path as any,
+      params: { email: emailValue },
+    } as any);
+  }
+
+  async function verifyResetOtpFn() {
+    const response = await verifyResetOtp({
+      email: emailValue,
+      otp,
+    }).unwrap();
+    console.log("Verify Reset OTP response:", response?.data);
+    const resetToken = response?.data?.resetToken;
+    if (resetToken) {
+      router.replace({
+        pathname: path as any,
+        params: { resetToken },
+      } as any);
+    }
+  }
 
   const verify = async () => {
     if (otp.length !== 4) {
@@ -58,39 +107,11 @@ const VerifyOtpScreen: React.FC = () => {
     }
 
     try {
-      const response = await verifyEmail({
-        email: emailValue,
-        otp,
-      }).unwrap();
-      console.log("Verify email response:", response?.data);
-
-      const token = response?.data?.accessToken;
-      const refreshToken = response?.data?.refreshToken;
-      const user = response?.data?.user;
-
-      if (token && refreshToken) {
-        await dispatch(
-          persistCredentials({
-            user: {
-              id: user?._id ?? existingUser?.id,
-              name: user?.name ?? existingUser?.name,
-              email: user?.email ?? existingUser?.email,
-              phone: user?.phone ?? existingUser?.phone,
-              role: user?.role ?? existingUser?.role,
-              profileImage: user?.profileImage ?? existingUser?.profileImage,
-              emailVerifiedAt:
-                user?.emailVerifiedAt ?? existingUser?.emailVerifiedAt ?? null,
-            },
-            token,
-            refreshToken,
-          }),
-        ).unwrap();
+      if (isResetFlow) {
+        verifyResetOtpFn();
+      } else {
+        verifyEmailFn();
       }
-
-      router.replace({
-        pathname: path as any,
-        params: { email: emailValue },
-      } as any);
     } catch (err: any) {
       const message =
         err?.data?.error?.message ??
@@ -159,9 +180,9 @@ const VerifyOtpScreen: React.FC = () => {
       </View>
       <CustomButton
         type="main"
-        text={isVerifying ? "Verifying..." : "Verify"}
+        text="Verify"
         onClick={verify}
-        isDisable={isVerifying}
+        isLoading={isVerifying || isVerifyingReset}
       />
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don&apos;t receive OTP? </Text>

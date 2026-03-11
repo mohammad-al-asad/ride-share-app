@@ -1,6 +1,7 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
+import { useForgotPasswordMutation } from "@/redux/api/authApi";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -17,12 +18,25 @@ import { CustomInput } from "../../components/CustomInput";
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
   const onNext = async () => {
     if (!email.trim()) {
       Alert.alert("Email required", "Please enter your email.");
       return;
     }
+    try {
+      const res = await forgotPassword({ email: email.trim() }).unwrap();
+      console.log(res?.data?.message);
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        "Failed to Send otp. Please try again.";
+      Alert.alert("Error", message);
+      console.log("Otp Send failed:", err);
+    }
+
     router.push({
       pathname: "/(auth)/verify-otp",
       params: {
@@ -63,6 +77,7 @@ export default function ForgotPasswordScreen() {
                 type="main"
                 text="Next"
                 onClick={onNext}
+                isLoading={isLoading}
               />
             </View>
 

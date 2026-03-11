@@ -103,6 +103,7 @@ export default function ProfileScreen() {
         cropping: true,
         width: 400,
         height: 400,
+        cropperActiveWidgetColor: "#6372ff",
       });
 
       if (!Array.isArray(result) && result.mime?.startsWith("image/")) {

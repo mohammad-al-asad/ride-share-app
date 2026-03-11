@@ -5,15 +5,17 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableOpacityProps,
 } from "react-native";
 
-interface ButtonProps {
+interface ButtonProps extends TouchableOpacityProps {
   type?: string;
   text: string;
   onClick: () => void;
   style?: any;
   textStyle?: any;
   isDisable?: boolean;
+  isLoading?: boolean;
 }
 
 const CustomButton = ({
@@ -23,50 +25,54 @@ const CustomButton = ({
   style,
   textStyle,
   isDisable,
+  isLoading = false,
   ...props
 }: ButtonProps) => {
+  const isDisabled = Boolean(isDisable || isLoading);
+
+  const backgroundColor = isDisable
+    ? "#E5E7EB"
+    : type === "outline"
+      ? "white"
+      : type === "destructive"
+        ? "#BC0E01"
+        : colors.main;
+
+  const textColor = isDisable
+    ? "#9CA3AF"
+    : type === "outline"
+      ? "#000"
+      : type === "destructive"
+        ? "#fff"
+        : colors.gold;
+
+  const loadingColor =
+    type === "outline" ? colors.main : type === "destructive" ? "#fff" : colors.gold;
+
   return (
     <TouchableOpacity
       {...props}
       onPress={onClick}
+      disabled={isDisabled}
+      activeOpacity={isDisabled ? 1 : 0.7}
       style={[
         styles.Btn,
-        {
-          backgroundColor: isDisable
-            ? "#E5E7EB"
-            : type === "outline"
-              ? "white"
-              : type === "destructive"
-                ? "#BC0E01"
-                : colors.main,
-        },
+        { backgroundColor, opacity: isLoading ? 0.85 : 1 },
         style,
       ]}
     >
-      {!isDisable ? (
+      {isLoading ? (
+        <ActivityIndicator size="small" color={loadingColor} />
+      ) : (
         <Text
           style={[
             styles.Text,
-            {
-              color:
-                type === "outline"
-                  ? "#000"
-                  : type === "destructive"
-                    ? "#fff"
-                    : colors.gold,
-            },
+            { color: textColor },
             textStyle,
-            ...[
-              isDisable && {
-                color: "#9CA3AF",
-              },
-            ],
           ]}
         >
           {text}
         </Text>
-      ) : (
-        <ActivityIndicator size="small" color={colors.main} />
       )}
     </TouchableOpacity>
   );

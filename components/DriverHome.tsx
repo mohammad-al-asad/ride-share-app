@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     height: scale(50),
   },
   welcomeText: {
-    fontSize: scale(32),
+    fontSize: scale(20),
     fontWeight: "500",
     color: "#1A1A1A",
   },

@@ -38,6 +38,7 @@ export default function AddPhotoScreen() {
         cropping: true,
         width: 400,
         height: 400,
+        cropperActiveWidgetColor: "#6372ff",
       });
 
       if (!Array.isArray(result) && result.mime?.startsWith("image/")) {
@@ -136,16 +137,15 @@ export default function AddPhotoScreen() {
           </View>
         </View>
 
-        {selectedImage && (
-          <View style={styles.buttonWrapper}>
-            <CustomButton
-              type="main"
-              text={isUploading ? "Uploading..." : "Get Started"}
-              onClick={handleGetStarted}
-              isDisable={isUploading}
-            />
-          </View>
-        )}
+        <View style={styles.buttonWrapper}>
+          <CustomButton
+            type="main"
+            text="Get Started"
+            onClick={handleGetStarted}
+            isLoading={isUploading}
+            isDisable={selectedImage === null}
+          />
+        </View>
       </View>
     </View>
   );

@@ -30,8 +30,8 @@ const RECENT_LOCATIONS = [
 ];
 
 export default function HomeScreen() {
-    const user = useAppSelector((state: RootState) => state.auth.user);
-    const userName = user?.name?.trim() || "User";
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const userName = user?.name?.trim() || "User";
   return (
     <View style={styles.mainContainer}>
       {/* Background Grid */}
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     height: 50,
   },
   welcomeText: {
-    fontSize: scale(32),
+    fontSize: scale(20),
     fontWeight: "500",
     color: "#1A1A1A",
   },

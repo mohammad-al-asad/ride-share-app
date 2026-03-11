@@ -2,6 +2,7 @@ import {
   ChangePasswordType,
   LoginType,
   RegisterType,
+  ResetPasswordType,
   UpdateProfileInfoType,
 } from "@/schemas/authSchema";
 import { baseApi } from "./baseApi";
@@ -14,6 +15,7 @@ type AuthUser = {
   phone?: string;
   profileImage?: string;
   emailVerifiedAt?: string | null;
+  otp?: string;
 };
 
 type LoginResponse = {
@@ -75,6 +77,12 @@ type VerifyEmailResponse = {
     refreshToken?: string;
   };
 };
+type VerifyResetOtpResponse = {
+  success: boolean;
+  data: {
+    resetToken?: string;
+  };
+};
 
 type UpdateRolePayload = {
   role: "driver" | "rider";
@@ -110,6 +118,20 @@ type ChangePasswordPayload = Pick<
 >;
 
 type ChangePasswordResponse = {
+  success: boolean;
+  data: {
+    message: string;
+  };
+};
+
+type ResetPasswordPayload = Pick<
+  ResetPasswordType,
+  "newPassword" | "confirmPassword"
+> & {
+  resetToken: string;
+};
+
+type ResetPasswordResponse = {
   success: boolean;
   data: {
     message: string;
@@ -165,6 +187,13 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    verifyResetOtp: builder.mutation<VerifyResetOtpResponse, VerifyEmailPayload>({
+      query: (body) => ({
+        url: "auth/verify-reset-otp",
+        method: "POST",
+        body,
+      }),
+    }),
     updateRole: builder.mutation<UpdateRoleResponse, UpdateRolePayload>({
       query: (body) => ({
         url: "auth/editRole",
@@ -199,6 +228,13 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    resetPassword: builder.mutation<ResetPasswordResponse, ResetPasswordPayload>({
+      query: (body) => ({
+        url: "auth/reset-password",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -213,4 +249,6 @@ export const {
   useUploadProfileImageMutation,
   useUpdateProfileInfoMutation,
   useChangePasswordMutation,
+  useVerifyResetOtpMutation,
+  useResetPasswordMutation,
 } = authApi;

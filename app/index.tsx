@@ -40,7 +40,7 @@ export default function App() {
   const stage = useSharedValue(0);
   const router = useRouter();
   const token = useAppSelector((state: RootState) => state.auth.token);
-  let isAuthenticated = token ? true : false;
+  const isAuthenticated = Boolean(token);
   const dispatch = useAppDispatch();
 
   useLayoutEffect(() => {

@@ -1,8 +1,11 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  email: z.string().email("Invalid email"),
+  name: z
+    .string()
+    .min(2, "Name is required")
+    .max(20, "Name must be less than 20 chars"),
+  email: z.email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 chars"),
   phone: z.string().regex(/^01\d{9}$/, "Phone must be 11 digits"),
 });
@@ -10,7 +13,7 @@ export const registerSchema = z.object({
 export const roleSchema = z.enum(["driver", "rider"]);
 
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email"),
+  email: z.email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 chars"),
 });
 
@@ -30,7 +33,18 @@ export const changePasswordSchema = z
     message: "Passwords do not match",
   });
 
+export const resetPasswordSchema = z
+  .object({
+    newPassword: z.string().min(8, "New password must be at least 8 chars"),
+    confirmPassword: z.string().min(1, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
 export type RegisterType = z.infer<typeof registerSchema>;
 export type LoginType = z.infer<typeof loginSchema>;
 export type UpdateProfileInfoType = z.infer<typeof updateProfileInfoSchema>;
 export type ChangePasswordType = z.infer<typeof changePasswordSchema>;
+export type ResetPasswordType = z.infer<typeof resetPasswordSchema>;

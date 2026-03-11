@@ -116,7 +116,7 @@ export default function ChooseRoleScreen() {
             type="main"
             text={isLoading ? "Please wait..." : "Next"}
             onClick={onNext}
-            isDisable={isLoading}
+            isLoading={isLoading}
           />
         </View>
       </View>

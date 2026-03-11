@@ -130,7 +130,7 @@ export default function SetPasswordFormScreen() {
           type="main"
           text={isLoading ? "Changing..." : "Change Password"}
           onClick={setPassword}
-          isDisable={isLoading}
+          isLoading={isLoading}
         />
         <TouchableOpacity
           style={styles.backButton}

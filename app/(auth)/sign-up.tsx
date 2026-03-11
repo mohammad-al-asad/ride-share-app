@@ -59,6 +59,7 @@ export default function SignUpScreen() {
           }),
         ).unwrap();
       }
+      console.log("OTP: ", registerResponse?.data?.user?.otp);
 
       router.replace({
         pathname: "/(auth)/verify-otp",
@@ -174,7 +175,7 @@ export default function SignUpScreen() {
                 type="main"
                 text={isRegistering ? "Please wait..." : "Sign Up"}
                 onClick={onSubmit}
-                isDisable={isRegistering}
+                isLoading={isRegistering}
               />
             </View>
           </View>

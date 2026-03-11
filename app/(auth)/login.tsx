@@ -172,9 +172,9 @@ export default function LoginScreen() {
 
             <CustomButton
               type="main"
-              text={isLoading ? "Logging in..." : "Login"}
+              text="Login"
               onClick={onSubmit}
-              isDisable={isLoading}
+              isLoading={isLoading}
             />
 
             <View style={styles.dividerArea}>
