@@ -31,7 +31,7 @@ const CustomButton = ({
   const isDisabled = Boolean(isDisable || isLoading);
 
   const backgroundColor = isDisable
-    ? "#E5E7EB"
+    ? "#ccc"
     : type === "outline"
       ? "white"
       : type === "destructive"

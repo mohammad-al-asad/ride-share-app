@@ -1,12 +1,21 @@
+import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import {
+  RideLocation,
+  resetRideBook,
+  setRideSchedule,
+  setStep1Locations,
+} from "@/redux/slices/rideBookSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { Gps01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -24,26 +33,109 @@ const pickupOptions = [
 ];
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_MAP_API_KEY;
+type PickupKind = "now" | "later";
+
+type PlacePrediction = {
+  place_id: string;
+  description?: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
+};
+
+type GeocodeResponse = {
+  results?: {
+    geometry?: {
+      location?: {
+        lat: number;
+        lng: number;
+      };
+    };
+  }[];
+};
 
 export default function LocationSelectionScreen() {
-  const [pickupType, setPickupType] = useState("now");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [pickUpLocation, setPickUpLocation] = useState("");
-  const [dropOffLocation, setDropOffLocation] = useState("");
-  const [pickUpText, setPickUpText] = useState("");
-  const [dropOffText, setDropOffText] = useState("");
+  const dispatch = useAppDispatch();
+  const { preserve } = useLocalSearchParams<{ preserve?: string }>();
+  const preserveValue = Array.isArray(preserve) ? preserve[0] : preserve;
+  const {
+    pickup: storedPickup,
+    dropoff: storedDropoff,
+    schedule,
+  } = useAppSelector((state) => state.rideBook.step1);
+
+  const [pickupType, setPickupType] = useState<PickupKind>(schedule.kind);
+  const [searchResults, setSearchResults] = useState<PlacePrediction[]>([]);
+  const [pickup, setPickup] = useState<RideLocation | null>(storedPickup);
+  const [dropoff, setDropoff] = useState<RideLocation | null>(storedDropoff);
+  const [pickUpText, setPickUpText] = useState(storedPickup?.address ?? "");
+  const [dropOffText, setDropOffText] = useState(storedDropoff?.address ?? "");
   const [currentInput, setCurrentInput] = useState<"pickup" | "dropoff">(
     "dropoff",
   );
   const [gettingLocation, setGettingLocation] = useState(false);
-  const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null);
+  const [searchTimer, setSearchTimer] = useState<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const hasConsumedPreserveRef = useRef(false);
 
-  // Auto-navigate when both are filled
+  useFocusEffect(
+    useCallback(() => {
+      if (preserveValue === "1" && !hasConsumedPreserveRef.current) {
+        hasConsumedPreserveRef.current = true;
+        return;
+      }
+
+      hasConsumedPreserveRef.current = false;
+      dispatch(resetRideBook());
+      setPickupType("now");
+      setPickup(null);
+      setDropoff(null);
+      setPickUpText("");
+      setDropOffText("");
+      setSearchResults([]);
+    }, [dispatch, preserveValue]),
+  );
+
+  // Keep local state in sync when map-based selections update Redux.
   useEffect(() => {
-    if (pickUpLocation && dropOffLocation) {
-      router.push("/(protected)/(book)/choose-time");
+    if (storedPickup) {
+      setPickup(storedPickup);
+      setPickUpText(storedPickup.address);
+    } else {
+      setPickup(null);
+      setPickUpText("");
     }
-  }, [pickUpLocation, dropOffLocation]);
+
+    if (storedDropoff) {
+      setDropoff(storedDropoff);
+      setDropOffText(storedDropoff.address);
+    } else {
+      setDropoff(null);
+      setDropOffText("");
+    }
+  }, [storedPickup, storedDropoff]);
+
+  useEffect(() => {
+    dispatch(
+      setRideSchedule(
+        pickupType === "later"
+          ? {
+              kind: "later",
+              pickupAt: schedule.pickupAt ?? null,
+            }
+          : {
+              kind: "now",
+              pickupAt: null,
+            },
+      ),
+    );
+  }, [dispatch, pickupType, schedule.pickupAt]);
+
+  useEffect(() => {
+    dispatch(setStep1Locations({ pickup, dropoff }));
+  }, [dispatch, pickup, dropoff]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -81,42 +173,113 @@ export default function LocationSelectionScreen() {
     }
   };
 
+  const getCoordinatesByPlaceId = async (placeId: string) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?place_id=${encodeURIComponent(
+          placeId,
+        )}&key=${GOOGLE_MAPS_API_KEY}`,
+      );
+      const json = (await response.json()) as GeocodeResponse;
+      const coordinate = json?.results?.[0]?.geometry?.location;
+      if (!coordinate) {
+        return null;
+      }
+
+      return {
+        lat: coordinate.lat,
+        lng: coordinate.lng,
+      };
+    } catch (error) {
+      console.error("Failed to resolve place coordinates:", error);
+      return null;
+    }
+  };
+
+  const formatReverseGeocodeAddress = (
+    address: Location.LocationGeocodedAddress,
+  ) => {
+    return [
+      address.name,
+      address.street,
+      address.city,
+      address.region,
+      address.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  };
+
   const getCurrentLocation = async () => {
     setGettingLocation(true);
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
       setGettingLocation(false);
-      alert("Permission to access location was denied");
+      Alert.alert(
+        "Permission denied",
+        "Permission to access location was denied.",
+      );
       return;
     }
 
     try {
       const location = await Location.getCurrentPositionAsync({});
       const [address] = await Location.reverseGeocodeAsync(location.coords);
-      const formattedAddress =
-        `${address?.name || ""} ${address?.street || ""}`.trim();
+      const formattedAddress = address
+        ? formatReverseGeocodeAddress(address)
+        : "Current location";
 
-      setPickUpLocation(formattedAddress);
+      setPickup({
+        address: formattedAddress,
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+      });
       setPickUpText(formattedAddress);
     } catch (error) {
       console.error(error);
+      Alert.alert("Location error", "Failed to fetch current location.");
     }
     setGettingLocation(false);
   };
 
-  const handleLocationSelect = (item: any) => {
+  const handleLocationSelect = async (item: PlacePrediction) => {
     const mainText =
       item?.structured_formatting?.main_text || item?.description || "";
     const fullDescription = item?.description || "";
+    const coordinates = await getCoordinatesByPlaceId(item.place_id);
+
+    if (!coordinates) {
+      Alert.alert("Location error", "Could not get location coordinates.");
+      return;
+    }
+
+    const selectedLocation: RideLocation = {
+      address: mainText,
+      lat: coordinates.lat,
+      lng: coordinates.lng,
+    };
 
     if (currentInput === "pickup") {
-      setPickUpLocation(mainText);
+      setPickup(selectedLocation);
       setPickUpText(fullDescription);
     } else {
-      setDropOffLocation(mainText);
+      setDropoff(selectedLocation);
       setDropOffText(fullDescription);
     }
     setSearchResults([]);
+  };
+
+  const onNext = () => {
+    if (!pickup || !dropoff) {
+      Alert.alert("Missing location", "Please select both pickup and dropoff.");
+      return;
+    }
+
+    router.push(
+      pickupType === "later"
+        ? "/(protected)/(book)/choose-time"
+        : "/(protected)/(book)/book-map",
+    );
   };
 
   const renderItem = (item: any) => {
@@ -168,7 +331,7 @@ export default function LocationSelectionScreen() {
       <View style={styles.inputCard}>
         {/* Pickup Input */}
         <View style={styles.inputRow}>
-          {pickUpLocation ? (
+          {pickup ? (
             <Image
               style={{ height: 20, width: 20 }}
               source={require("@/assets/icons/selectedAddress.svg")}
@@ -185,7 +348,7 @@ export default function LocationSelectionScreen() {
               setCurrentInput("pickup");
               setPickUpText(text);
               if (text === "" || text.length < pickUpText.length) {
-                setPickUpLocation("");
+                setPickup(null);
                 setSearchResults([]);
               } else {
                 debouncedSearch(text);
@@ -198,7 +361,7 @@ export default function LocationSelectionScreen() {
 
         {/* Dropoff Input */}
         <View style={styles.inputRow}>
-          {dropOffLocation ? (
+          {dropoff ? (
             <Image
               style={{ height: 20, width: 20 }}
               source={require("@/assets/icons/selectedAddress.svg")}
@@ -214,7 +377,7 @@ export default function LocationSelectionScreen() {
               setCurrentInput("dropoff");
               setDropOffText(text);
               if (text === "" || text.length < dropOffText.length) {
-                setDropOffLocation(""); // Clear state when text is cleared
+                setDropoff(null);
                 setSearchResults([]);
               } else {
                 debouncedSearch(text);
@@ -229,7 +392,7 @@ export default function LocationSelectionScreen() {
         <View style={styles.listWrapper}>
           <FlatList
             data={searchResults}
-            keyExtractor={(item: any) => item.place_id}
+            keyExtractor={(item) => item.place_id}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.locationItem}
@@ -280,7 +443,12 @@ export default function LocationSelectionScreen() {
 
       <TouchableOpacity
         style={styles.actionButton}
-        onPress={() => router.push("/(protected)/(book)/confirm-pickup")}
+        onPress={() =>
+          router.push({
+            pathname: "/(protected)/(book)/confirm-pickup",
+            params: { mode: "dropoff" },
+          } as any)
+        }
       >
         <Ionicons
           name="location-outline"
@@ -289,6 +457,12 @@ export default function LocationSelectionScreen() {
         />
         <Text style={styles.actionButtonText}>Set location on map</Text>
       </TouchableOpacity>
+
+      <CustomButton
+        text="Next"
+        onClick={onNext}
+        isDisable={!pickup || !dropoff}
+      />
     </View>
   );
 }

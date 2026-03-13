@@ -1,4 +1,6 @@
 import CustomButton from "@/components/CustomButton";
+import { useAppDispatch } from "@/redux/hooks";
+import { RidePreference, setRidePreference } from "@/redux/slices/rideBookSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { BottomSheetFlatList, BottomSheetView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
@@ -6,107 +8,135 @@ import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
-// Mock Data for the Ride List
-const RIDE_DATA = [
+type RideSectionItem = {
+  id: string;
+  type: "section";
+  title: string;
+};
+
+type RideOptionItem = {
+  id: string;
+  type: "ride";
+  name: string;
+  sub?: string;
+  passengers: number;
+  image: any;
+  category: "Regular" | "Premium";
+  preference: RidePreference;
+};
+
+type RideItem = RideSectionItem | RideOptionItem;
+
+const RIDE_DATA: RideItem[] = [
   { id: "header1", type: "section", title: "Regular" },
 
   {
-    id: "1",
+    id: "car_regular",
+    type: "ride",
     name: "Car",
     passengers: 4,
-    price: "$5.00",
     image: require("@/assets/images/cars/car.png"),
-    type: "Regular",
+    category: "Regular",
+    preference: { vehicleType: "car", tier: "regular", size: "normal" },
   },
 
   {
-    id: "2",
+    id: "suv_compact_regular",
+    type: "ride",
     name: "SUV",
     sub: "(Compact)",
     passengers: 5,
-    price: "$5.00",
     image: require("@/assets/images/cars/suv.png"),
-    type: "Regular",
+    category: "Regular",
+    preference: { vehicleType: "suv", tier: "regular", size: "compact" },
   },
 
   {
-    id: "3",
+    id: "suv_full_regular",
+    type: "ride",
     name: "SUV",
     sub: "(Full)",
     passengers: 8,
-    price: "$5.00",
     image: require("@/assets/images/cars/suv.png"),
-    type: "Regular",
+    category: "Regular",
+    preference: { vehicleType: "suv", tier: "regular", size: "full" },
   },
 
   {
-    id: "4",
+    id: "van_compact_regular",
+    type: "ride",
     name: "Van",
     sub: "(Compact)",
     passengers: 8,
-    price: "$5.00",
     image: require("@/assets/images/cars/van.png"),
-    type: "Regular",
+    category: "Regular",
+    preference: { vehicleType: "van", tier: "regular", size: "compact" },
   },
 
   {
-    id: "5",
+    id: "van_full_regular",
+    type: "ride",
     name: "Van",
     sub: "(Full)",
     passengers: 15,
-    price: "$5.00",
     image: require("@/assets/images/cars/van.png"),
-    type: "Regular",
+    category: "Regular",
+    preference: { vehicleType: "van", tier: "regular", size: "full" },
   },
 
   { id: "header2", type: "section", title: "Premium" },
 
   {
-    id: "6",
+    id: "car_premium",
+    type: "ride",
     name: "Car",
     passengers: 4,
-    price: "$5.00",
     image: require("@/assets/images/cars/car.png"),
-    type: "Premium",
+    category: "Premium",
+    preference: { vehicleType: "car", tier: "premium", size: "normal" },
   },
 
   {
-    id: "7",
+    id: "suv_compact_premium",
+    type: "ride",
     name: "SUV",
     sub: "(Compact)",
     passengers: 5,
-    price: "$5.00",
     image: require("@/assets/images/cars/suv.png"),
-    type: "Premium",
+    category: "Premium",
+    preference: { vehicleType: "suv", tier: "premium", size: "compact" },
   },
   {
-    id: "8",
+    id: "suv_full_premium",
+    type: "ride",
     name: "SUV",
     sub: "(Full)",
     passengers: 8,
-    price: "$5.00",
     image: require("@/assets/images/cars/suv.png"),
-    type: "Premium",
+    category: "Premium",
+    preference: { vehicleType: "suv", tier: "premium", size: "full" },
   },
 
   {
-    id: "9",
+    id: "van_compact_premium",
+    type: "ride",
     name: "Van",
     sub: "(Compact)",
     passengers: 8,
-    price: "$5.00",
     image: require("@/assets/images/cars/van.png"),
-    type: "Premium",
+    category: "Premium",
+    preference: { vehicleType: "van", tier: "premium", size: "compact" },
   },
 
   {
-    id: "10",
+    id: "van_full_premium",
+    type: "ride",
     name: "Van",
     sub: "(Full)",
     passengers: 15,
-    price: "$5.00",
     image: require("@/assets/images/cars/van.png"),
-    type: "Premium",
+    category: "Premium",
+    preference: { vehicleType: "van", tier: "premium", size: "full" },
   },
 ];
 
@@ -114,7 +144,7 @@ const SelectedRideCard = ({
   item,
   onClear,
 }: {
-  item: any;
+  item: RideOptionItem;
   onClear: () => void;
 }) => {
   return (
@@ -132,7 +162,7 @@ const SelectedRideCard = ({
       <View style={styles.selectedDetailsRow}>
         <View>
           {/* Header Tag (e.g., Premium) */}
-          <Text style={styles.selectedCategoryText}>{item.type}</Text>
+          <Text style={styles.selectedCategoryText}>{item.category}</Text>
           <View style={styles.rowAlignCenter}>
             <Text style={styles.selectedRideName}>{item.name} </Text>
             {item.sub && <Text style={styles.selectedRideSub}>{item.sub}</Text>}
@@ -142,18 +172,18 @@ const SelectedRideCard = ({
             </View>
           </View>
         </View>
-
-        <Text style={styles.selectedPriceText}>{item.price}</Text>
       </View>
     </View>
   );
 };
 
 const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
-  const [focused, setFocused] = useState<any>(null);
-  const [selected, setSelected] = useState<any>(null);
+  const dispatch = useAppDispatch();
 
-  const renderItem = ({ item }: any) => {
+  const [focused, setFocused] = useState<RideOptionItem | null>(null);
+  const [selected, setSelected] = useState<RideOptionItem | null>(null);
+
+  const renderItem = ({ item }: { item: RideItem }) => {
     if (item.type === "section") {
       return <Text style={styles.sectionHeader}>{item.title}</Text>;
     }
@@ -181,7 +211,6 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
             </View>
           </View>
         </View>
-        <Text style={styles.priceText}>{item.price}</Text>
       </TouchableOpacity>
     );
   };
@@ -196,22 +225,28 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
           <SelectedRideCard item={selected} onClear={() => setSelected(null)} />
           <CustomButton
             style={{ marginTop: verticalScale(20) }}
-            text={`Choose ${selected.type} ${selected.name} ${
+            text={`Choose ${selected.category} ${selected.name} ${
               selected?.sub ? selected.sub : ""
             }`}
-            onClick={() => setIspayment(true)}
+            onClick={() => {
+              if (selected.preference) {
+                dispatch(setRidePreference(selected.preference));
+              }
+              setIspayment(true);
+            }}
           />
         </BottomSheetView>
       ) : (
         <>
           <BottomSheetFlatList
-            contentContainerStyle={styles.listContainer}
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
             data={RIDE_DATA}
-            keyExtractor={(item: any) => item.id}
+            keyExtractor={(item: RideItem) => item.id}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
           />
-          <View style={{ paddingHorizontal: verticalScale(15) }}>
+          <View style={{ paddingHorizontal: verticalScale(15)}}>
             <CustomButton
               style={{
                 marginTop: verticalScale(10),
@@ -220,6 +255,7 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
               onClick={() => {
                 if (focused) setSelected(focused);
               }}
+              isDisable={!focused}
             />
           </View>
         </>
@@ -241,7 +277,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginVertical: scale(14),
-    marginBottom: scale(5),
+    marginBottom: 0,
   },
   sectionHeader: {
     fontSize: moderateScale(14),
@@ -252,7 +288,7 @@ const styles = StyleSheet.create({
   },
   rideItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     paddingVertical: scale(12),
     paddingHorizontal: scale(10),
@@ -268,7 +304,6 @@ const styles = StyleSheet.create({
   rideName: { fontSize: moderateScale(14), fontWeight: "700" },
   rideSub: { fontSize: moderateScale(12), color: "#666" },
   passengerText: { fontSize: moderateScale(12), color: "#666" },
-  priceText: { fontSize: moderateScale(14), fontWeight: "700" },
   rowAlignCenter: { flexDirection: "row", alignItems: "center" },
 
   // --- New Styles for the Selected Card ---
@@ -297,8 +332,7 @@ const styles = StyleSheet.create({
   },
   selectedDetailsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "center",
     width: "100%",
   },
   selectedCategoryText: {
@@ -315,15 +349,12 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     color: "#888",
   },
-  selectedPriceText: {
-    fontSize: moderateScale(18),
-    fontWeight: "800",
-    color: "#1A1A1A",
-  },
-  listContainer: {
+  list: {
     flex: 1,
+  },
+  listContent: {
     paddingHorizontal: scale(20),
     paddingTop: verticalScale(20),
-    marginBottom: verticalScale(20),
+    paddingBottom: verticalScale(60),
   },
 });
