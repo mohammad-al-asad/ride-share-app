@@ -1,5 +1,6 @@
 import { colors } from "@/config/colors";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { RootState } from "@/redux/store";
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
@@ -9,20 +10,28 @@ import MapView from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import { MarkerCircle } from "./AnimatedMarker";
 import AuthBackground from "./AuthBackground";
+import DriverAvailabilityButton, {
+  DriverCoordinate,
+} from "./DriverAvailabilityButton";
 import RequiredActions from "./RequiredActions";
 import { useAppSelector } from "@/redux/hooks";
-import { RootState } from "@/redux/store";
 
 export default function HomeScreen() {
-    const user = useAppSelector((state: RootState) => state.auth.user);
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const driverStatusMessage = useAppSelector(
+    (state: RootState) => state.driverRideStart.message,
+  );
+  const isOnline = useAppSelector(
+    (state: RootState) => state.driverRideStart.isOnline,
+  );
   const userName = user?.name?.trim() || "User";
-  const [driverLocation, setDriverLocation] = useState<any>(null);
-  const [heading, setHeading] = useState<number>(0);
+  const [driverLocation, setDriverLocation] = useState<DriverCoordinate | null>(null);
+  const [heading, setHeading] = useState(0);
   const mapRef = useRef<MapView | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      let subscription: Location.LocationSubscription;
+      let subscription: Location.LocationSubscription | null = null;
 
       const startWatching = async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -53,7 +62,7 @@ export default function HomeScreen() {
 
       return () => {
         subscription?.remove();
-        subscription = undefined as any;
+        subscription = null;
       };
     }, []),
   );
@@ -120,14 +129,16 @@ export default function HomeScreen() {
 
         {/* Button */}
         <View style={{ alignItems: "center" }}>
-          <TouchableOpacity onPress={() => {}} style={styles.goOnlineButton}>
-            <MaterialCommunityIcons
-              name="steering"
-              size={24}
-              color={colors.gold}
-            />
-            <Text style={styles.goOnlineText}>Go Online</Text>
-          </TouchableOpacity>
+          <DriverAvailabilityButton
+            driverLocation={driverLocation}
+            style={styles.goOnlineButton}
+            onlineStyle={styles.stopButton}
+            textStyle={styles.goOnlineText}
+          />
+          <Text style={styles.statusText}>
+            {driverStatusMessage ??
+              (isOnline ? "Driver is now online" : "Driver is now offline")}
+          </Text>
         </View>
       </View>
     </View>
@@ -201,20 +212,29 @@ const styles = StyleSheet.create({
   },
   goOnlineButton: {
     flexDirection: "row",
-    width: scale(150),
+    width: scale(170),
     backgroundColor: colors.main,
     marginHorizontal: scale(20),
     marginVertical: scale(15),
     marginBottom: verticalScale(100),
-    paddingVertical: scale(14),
-    borderRadius: scale(12),
+    paddingVertical: scale(16),
+    borderRadius: scale(18),
     justifyContent: "center",
     alignItems: "center",
     gap: scale(8),
+  },
+  stopButton: {
+    width: scale(185),
+    paddingVertical: scale(18),
   },
   goOnlineText: {
     color: colors.gold,
     fontWeight: "600",
     fontSize: moderateScale(14),
+  },
+  statusText: {
+    color: colors.secondaryText,
+    fontSize: moderateScale(13),
+    marginTop: scale(-8),
   },
 });

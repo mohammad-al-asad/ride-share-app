@@ -11,8 +11,18 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import DriverAvailabilityButton, {
+  DriverCoordinate,
+} from "./DriverAvailabilityButton";
 
-const TopMapControlls = () => {
+type TopMapControllsProps = {
+  driverLocation?: DriverCoordinate | null;
+  onStatusChange?: (isOnline: boolean) => void;
+};
+
+const TopMapControlls = ({
+  driverLocation,
+}: TopMapControllsProps) => {
   const [isEyeOpened, setIsEyeOpened] = useState(true);
 
   // Reanimated shared value
@@ -57,7 +67,16 @@ const TopMapControlls = () => {
           />
         </TouchableOpacity>
       </Animated.View>
-      <View style={{ width: scale(40) }} />
+      {/* Button */}
+      <View style={styles.statusButtonWrapper}>
+        <DriverAvailabilityButton
+        text={false}
+          driverLocation={driverLocation}
+          style={styles.goOnlineButton}
+          textStyle={styles.goOnlineText}
+          iconSize={scale(18)}
+        />
+      </View>
     </View>
   );
 };
@@ -104,5 +123,20 @@ const styles = StyleSheet.create({
     padding: scale(6),
     justifyContent: "center",
     alignItems: "center",
+  },
+  statusButtonWrapper: {
+    alignItems: "center",
+  },
+  goOnlineButton: {
+    backgroundColor: "#6366F1",
+    paddingVertical: scale(11),
+    paddingHorizontal: scale(11),
+    borderRadius: scale(8),
+  },
+
+  goOnlineText: {
+    color: colors.gold,
+    fontWeight: "600",
+    fontSize: moderateScale(12),
   },
 });

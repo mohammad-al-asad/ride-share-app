@@ -1,22 +1,16 @@
 import { MarkerCircle } from "@/components/AnimatedMarker";
+import DriverAvailabilityButton from "@/components/DriverAvailabilityButton";
 import { MarkerTriangle, MarkerUser } from "@/components/Markers";
-import NavigationCard from "@/components/NavigationCard";
 import RequestCard from "@/components/RequestCard";
-import RequiredActions from "@/components/RequiredActions";
 import RiderPickupCard from "@/components/RidePickupCard";
-import { colors } from "@/config/colors";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import TopMapControlls from "@/components/TopMapControlls";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -33,6 +27,9 @@ export default function HomeScreen() {
   const mapRef = useRef<MapView | null>(null);
   const bottomSheetRef = useRef<BottomSheet | null>(null);
   // Driver state
+  const isOnline = useAppSelector(
+    (state: RootState) => state.driverRideStart.isOnline,
+  );
   const [driverLocation, setDriverLocation] = useState(routeCoordinates[0]);
   const [heading, setHeading] = useState(0);
 
@@ -40,7 +37,6 @@ export default function HomeScreen() {
   const [steps, setSteps] = useState<any[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
-  const [isOffline, setisOffline] = useState(true);
   const [isRequest, setIsRequest] = useState(false);
   const [isAccepted, setIsAccepted] = useState(false);
 
@@ -130,9 +126,9 @@ export default function HomeScreen() {
   return (
     <View style={styles.mainContainer}>
       {/* Top Controlls */}
-
+      <TopMapControlls driverLocation={driverLocation} />
       {/* Navigation card */}
-      <NavigationCard
+      {/* <NavigationCard
         distance={steps[currentStepIndex]?.distance?.text || "0.0 mi"}
         roadName={
           steps[currentStepIndex]
@@ -145,7 +141,7 @@ export default function HomeScreen() {
         pickupLocation="Gulshan 1 DNCC Market"
         maneuver={steps[currentStepIndex]?.maneuver || "straight"}
         arrived={arrived}
-      />
+      /> */}
       {/* Map */}
       <MapView
         ref={mapRef}
@@ -194,7 +190,7 @@ export default function HomeScreen() {
       )}
       {/* Ride Request Card */}
       {/* Bottom Status Sheets */}
-      {isOffline && (
+      {isOnline ? (
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
@@ -202,7 +198,7 @@ export default function HomeScreen() {
             styles.bottomSheet,
             { alignItems: "center", justifyContent: "center" },
           ]}
-          snapPoints={[height * 0.06, height * 0.35]}
+          snapPoints={[height * 0.06, height * 0.25]}
           enableDynamicSizing={false}
           activeOffsetY={[0, 1]}
           enablePanDownToClose={false}
@@ -213,26 +209,50 @@ export default function HomeScreen() {
             marginTop: verticalScale(4),
           }}
         >
-          {/* Offline Sheet */}
+          {/* Online Sheet */}
           <>
-            <Text style={styles.statusHeader}>Your&apos;re offline</Text>
-            <RequiredActions />
-            <TouchableOpacity
-              style={styles.goOnlineButton}
-              onPress={() => {
-                setisOffline(false);
-                setIsRequest(true);
-              }}
-            >
-              <MaterialCommunityIcons
-                name="steering"
-                size={scale(20)}
-                color={colors.gold}
-              />
-              <Text style={styles.goOnlineText}>Go Online</Text>
-            </TouchableOpacity>
+            <Text style={styles.statusHeader}>You&apos;re online</Text>
+            <Text style={styles.statusSubtext}>
+              Finding your next customer...
+            </Text>
+            <View style={styles.statusLevelTrack}>
+              <View style={styles.statusLevelFill} />
+            </View>
           </>
-          {/* Offline Sheet */}
+          {/* Online Sheet */}
+        </BottomSheet>
+      ) : (
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={1}
+          style={[
+            styles.bottomSheet,
+            { alignItems: "center", justifyContent: "center" },
+          ]}
+          snapPoints={[height * 0.06, height * 0.25]}
+          enableDynamicSizing={false}
+          activeOffsetY={[0, 1]}
+          enablePanDownToClose={false}
+          handleIndicatorStyle={{
+            backgroundColor: "#ccc",
+            width: scale(50),
+            height: 8,
+            marginTop: verticalScale(4),
+          }}
+        >
+          {/* Online Sheet */}
+          <>
+            <Text style={styles.statusHeader}>You&apos;re offline</Text>
+            <DriverAvailabilityButton
+              driverLocation={driverLocation}
+              style={{
+                flexDirection: "row",
+                width: scale(270),
+                marginTop: verticalScale(20),
+              }}
+            />
+          </>
+          {/* Online Sheet */}
         </BottomSheet>
       )}
       {isAccepted && (
@@ -324,23 +344,6 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  goOnlineButton: {
-    flexDirection: "row",
-    backgroundColor: colors.main,
-    paddingVertical: scale(12),
-    paddingHorizontal: scale(25),
-    borderRadius: scale(15),
-    alignItems: "center",
-    gap: scale(10),
-    elevation: 5,
-    justifyContent: "center",
-    marginVertical: scale(20),
-  },
-  goOnlineText: {
-    color: colors.gold,
-    fontWeight: "600",
-    fontSize: moderateScale(16),
-  },
   bottomSheet: {
     paddingHorizontal: scale(20),
     elevation: 5,
@@ -353,7 +356,27 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(22),
     fontWeight: "700",
     color: "#333",
-    marginVertical: scale(15),
-    marginHorizontal: "auto",
+    marginTop: scale(18),
+    textAlign: "center",
+  },
+  statusSubtext: {
+    fontSize: moderateScale(14),
+    color: "#5B5B5B",
+    marginTop: scale(8),
+    marginBottom: scale(18),
+    textAlign: "center",
+  },
+  statusLevelTrack: {
+    width: scale(270),
+    height: verticalScale(6),
+    borderRadius: scale(999),
+    backgroundColor: "#E7E7E7",
+    overflow: "hidden",
+  },
+  statusLevelFill: {
+    width: "11%",
+    height: "100%",
+    borderRadius: scale(999),
+    backgroundColor: "#5E5CFF",
   },
 });

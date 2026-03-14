@@ -1,5 +1,6 @@
 import type {
   RideFareConfig,
+  RidePayment,
   RideRequestItem,
   RideRequestPayload,
 } from "../slices/rideBookSlice";
@@ -20,6 +21,33 @@ type RideRequestResponse = {
   };
 };
 
+type PaymentSetupIntentResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    message: string;
+    setupIntentId: string;
+    clientSecret: string;
+    publishableKey: string;
+    customerId: string | null;
+    defaultPaymentMethodId: string | null;
+    paymentMethod: unknown | null;
+  };
+};
+
+type SavePaymentMethodResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    message?: string;
+    setupIntentId?: string;
+    customerId?: string | null;
+    defaultPaymentMethodId?: string | null;
+    paymentMethod?: unknown | null;
+  };
+  error?: unknown;
+};
+
 export const rideBookApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getFareConfig: builder.query<FareConfigResponse, void>({
@@ -35,7 +63,28 @@ export const rideBookApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    createPaymentSetupIntent: builder.mutation<PaymentSetupIntentResponse, void>({
+      query: () => ({
+        url: "riderGetRide/payment-method/setup-intent",
+        method: "POST",
+      }),
+    }),
+    savePaymentMethod: builder.mutation<
+      SavePaymentMethodResponse,
+      Pick<RidePayment, "setupIntentId">
+    >({
+      query: (body) => ({
+        url: "riderGetRide/payment-method/save",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useGetFareConfigQuery, useCreateRideRequestMutation } = rideBookApi;
+export const {
+  useGetFareConfigQuery,
+  useCreateRideRequestMutation,
+  useCreatePaymentSetupIntentMutation,
+  useSavePaymentMethodMutation,
+} = rideBookApi;

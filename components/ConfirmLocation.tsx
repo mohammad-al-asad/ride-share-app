@@ -94,7 +94,7 @@ const ConfirmLocation = ({
     (state) => state.rideBook.step1,
   );
   const preference = useAppSelector((state) => state.rideBook.step2.preference);
-  const payment = useAppSelector((state) => state.rideBook.step3.payment);
+  const payment = useAppSelector((state) => state.rideBook.payment);
 
   const seededCoordinate: Coordinate =
     mode === "dropoff"
@@ -323,7 +323,7 @@ const ConfirmLocation = ({
       if (!payment) {
         Alert.alert(
           "Missing payment",
-          "Please add your payment details first.",
+          "Please add your payment method first.",
         );
         return;
       }

@@ -2,11 +2,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./slices/authSlice";
 import { baseApi } from "./api/baseApi";
+import driverRideStartReducer from "./slices/driverRideStartSlice";
 import rideBookReducer from "./slices/rideBookSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    driverRideStart: driverRideStartReducer,
     rideBook: rideBookReducer,
     [baseApi.reducerPath]: baseApi.reducer,
   },

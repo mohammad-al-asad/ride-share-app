@@ -23,10 +23,16 @@ export type RidePreference = {
 };
 
 export type RidePayment = {
-  country: string;
-  expirationDate: string;
-  cvv: number;
-  cardNumber: number;
+  setupIntentId: string;
+  paymentMethodId: string | null;
+  customerId: string | null;
+  defaultPaymentMethodId: string | null;
+  card: {
+    brand: string | null;
+    last4: string | null;
+    expMonth: number | null;
+    expYear: number | null;
+  } | null;
 };
 
 export type RideFareConfig = {
@@ -99,9 +105,7 @@ type RideBookState = {
     preference: RidePreference | null;
     fareConfig: RideFareConfig | null;
   };
-  step3: {
-    payment: RidePayment | null;
-  };
+  payment: RidePayment | null;
   estimate: {
     estimatedMiles: number | null;
     estimatedMinutes: number | null;
@@ -122,9 +126,7 @@ const initialState: RideBookState = {
     preference: null,
     fareConfig: null,
   },
-  step3: {
-    payment: null,
-  },
+  payment: null,
   estimate: {
     estimatedMiles: null,
     estimatedMinutes: null,
@@ -161,7 +163,7 @@ const rideBookSlice = createSlice({
       state.step2.fareConfig = action.payload;
     },
     setRidePayment: (state, action: PayloadAction<RidePayment>) => {
-      state.step3.payment = action.payload;
+      state.payment = action.payload;
     },
     setRideEstimate: (
       state,
@@ -173,7 +175,10 @@ const rideBookSlice = createSlice({
       state.estimate.estimatedMiles = action.payload.estimatedMiles;
       state.estimate.estimatedMinutes = action.payload.estimatedMinutes;
     },
-    setLatestRideRequest: (state, action: PayloadAction<RideRequestItem | null>) => {
+    setLatestRideRequest: (
+      state,
+      action: PayloadAction<RideRequestItem | null>,
+    ) => {
       state.latestRideRequest = action.payload;
     },
     resetRideBook: (state) => {
@@ -189,9 +194,7 @@ const rideBookSlice = createSlice({
         preference: null,
         fareConfig: null,
       };
-      state.step3 = {
-        payment: null,
-      };
+      state.payment = null;
       state.estimate = {
         estimatedMiles: null,
         estimatedMinutes: null,

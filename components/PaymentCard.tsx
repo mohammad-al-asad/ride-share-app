@@ -1,79 +1,190 @@
-import CustomButton from "@/components/CustomButton"; // Adjust path as needed
+import CustomButton from "@/components/CustomButton";
+import { colors } from "@/config/colors";
+import {
+  useCreatePaymentSetupIntentMutation,
+  useSavePaymentMethodMutation,
+} from "@/redux/api/rideBookApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setRidePayment } from "@/redux/slices/rideBookSlice";
-import { RidePaymentFormType, ridePaymentSchema } from "@/schemas/rideBookSchema";
-import { zodResolver } from "@hookform/resolvers/zod";
+import type { RidePayment } from "@/redux/slices/rideBookSlice";
 import {
   BottomSheetScrollView,
-  BottomSheetTextInput,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import { Image } from "expo-image";
-import { router } from "expo-router";
-import countries from "i18n-iso-countries";
-import en from "i18n-iso-countries/langs/en.json";
-import React from "react";
-import { Controller, useForm } from "react-hook-form";
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
+  CardForm,
+  initStripe,
+  useConfirmSetupIntent,
+} from "@stripe/stripe-react-native";
+import type { CardFormView } from "@stripe/stripe-react-native";
+import { router } from "expo-router";
+import React from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
-countries.registerLocale(en);
+const normalizeCardDetails = (
+  paymentMethod: any,
+  cardDetails: CardFormView.Details | null,
+): RidePayment["card"] => {
+  const sourceCard = paymentMethod?.Card ?? paymentMethod?.card ?? null;
+  const brand = sourceCard?.brand ?? paymentMethod?.brand ?? cardDetails?.brand ?? null;
+  const last4 = sourceCard?.last4 ?? paymentMethod?.last4 ?? cardDetails?.last4 ?? null;
+  const expMonth =
+    sourceCard?.expMonth ??
+    sourceCard?.exp_month ??
+    paymentMethod?.expMonth ??
+    paymentMethod?.exp_month ??
+    cardDetails?.expiryMonth ??
+    null;
+  const expYear =
+    sourceCard?.expYear ??
+    sourceCard?.exp_year ??
+    paymentMethod?.expYear ??
+    paymentMethod?.exp_year ??
+    cardDetails?.expiryYear ??
+    null;
 
-const countryObj = countries.getNames("en", { select: "official" });
-const countryOptions = Object.entries(countryObj).map(([code, name]) => ({
-  label: name,
-  value: code,
-}));
+  if (!brand && !last4 && expMonth == null && expYear == null) {
+    return null;
+  }
+
+  return {
+    brand: brand ? String(brand) : null,
+    last4: last4 ? String(last4) : null,
+    expMonth: typeof expMonth === "number" ? expMonth : null,
+    expYear: typeof expYear === "number" ? expYear : null,
+  };
+};
+
+const getPaymentMethodId = (
+  paymentMethod: any,
+  fallbackSetupIntent: {
+    paymentMethod?: { id?: string | null } | null;
+    paymentMethodId?: string | null;
+  },
+) => {
+  return (
+    paymentMethod?.id ??
+    paymentMethod?.paymentMethodId ??
+    paymentMethod?.payment_method_id ??
+    fallbackSetupIntent.paymentMethod?.id ??
+    fallbackSetupIntent.paymentMethodId ??
+    null
+  );
+};
 
 const PaymentScreen = () => {
   const dispatch = useAppDispatch();
-  const existingPayment = useAppSelector((state) => state.rideBook.step3.payment);
+  const existingPayment = useAppSelector((state) => state.rideBook.payment);
+  const [cardDetails, setCardDetails] = React.useState<CardFormView.Details | null>(
+    null,
+  );
+  const [createPaymentSetupIntent, { isLoading: isCreatingSetupIntent }] =
+    useCreatePaymentSetupIntentMutation();
+  const [savePaymentMethod, { isLoading: isSavingPaymentMethod }] =
+    useSavePaymentMethodMutation();
+  const { confirmSetupIntent, loading: isConfirmingSetupIntent } =
+    useConfirmSetupIntent();
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<RidePaymentFormType>({
-    resolver: zodResolver(ridePaymentSchema),
-    defaultValues: {
-      country: existingPayment?.country ?? "",
-      expirationDate: existingPayment?.expirationDate ?? "",
-      cvv: existingPayment?.cvv ? String(existingPayment.cvv) : "",
-      cardNumber: existingPayment?.cardNumber
-        ? String(existingPayment.cardNumber)
-        : "",
-    },
-  });
+  const isLoading =
+    isCreatingSetupIntent || isSavingPaymentMethod || isConfirmingSetupIntent;
 
-  const onSubmit = handleSubmit((values) => {
-    const cardNumber = Number(values.cardNumber);
-    const cvv = Number(values.cvv);
-
-    if (!Number.isFinite(cardNumber) || !Number.isFinite(cvv)) {
-      Alert.alert("Invalid payment", "Please provide valid numeric card details.");
+  const handleSubmit = async () => {
+    if (isLoading) {
       return;
     }
 
-    dispatch(
-      setRidePayment({
-        country: values.country,
-        expirationDate: values.expirationDate,
-        cvv,
-        cardNumber,
-      }),
-    );
+    if (existingPayment && !cardDetails?.complete) {
+      router.push({
+        pathname: "/(protected)/(book)/confirm-pickup",
+        params: { mode: "pickup" },
+      } as any);
+      return;
+    }
 
-    router.push({
-      pathname: "/(protected)/(book)/confirm-pickup",
-      params: { mode: "pickup" },
-    } as any);
-  });
+    if (!cardDetails?.complete) {
+      Alert.alert("Invalid card", "Please complete your card details first.");
+      return;
+    }
+
+    try {
+      const setupIntentResponse = await createPaymentSetupIntent().unwrap();
+      const setupIntentData = setupIntentResponse.data;
+
+      const confirmResult = await confirmSetupIntent(setupIntentData.clientSecret, {
+        paymentMethodType: "Card",
+      });
+
+      if ("error" in confirmResult && confirmResult.error) {
+        Alert.alert(
+          "Card setup failed",
+          confirmResult.error.message || "Could not verify this card.",
+        );
+        return;
+      }
+
+      if (!("setupIntent" in confirmResult) || !confirmResult.setupIntent) {
+        Alert.alert("Card setup failed", "Stripe did not return a setup result.");
+        return;
+      }
+
+      const confirmedSetupIntent = confirmResult.setupIntent;
+      if (confirmedSetupIntent.status !== "Succeeded") {
+        Alert.alert(
+          "Card setup incomplete",
+          "Your card setup is not completed yet. Please try again.",
+        );
+        return;
+      }
+
+      const saveResponse = await savePaymentMethod({
+        setupIntentId: confirmedSetupIntent.id || setupIntentData.setupIntentId,
+      }).unwrap();
+
+      if (!saveResponse.success) {
+        Alert.alert(
+          "Card save failed",
+          saveResponse.message || "Could not save your payment method.",
+        );
+        return;
+      }
+
+      const savedPaymentMethod =
+        saveResponse.data?.paymentMethod ?? confirmedSetupIntent.paymentMethod ?? null;
+      const paymentMethodId = getPaymentMethodId(savedPaymentMethod, confirmedSetupIntent);
+
+      dispatch(
+        setRidePayment({
+          setupIntentId: confirmedSetupIntent.id || setupIntentData.setupIntentId,
+          paymentMethodId,
+          customerId: saveResponse.data?.customerId ?? setupIntentData.customerId ?? null,
+          defaultPaymentMethodId:
+            saveResponse.data?.defaultPaymentMethodId ??
+            setupIntentData.defaultPaymentMethodId ??
+            paymentMethodId,
+          card: normalizeCardDetails(savedPaymentMethod, cardDetails),
+        }),
+      );
+
+      router.push({
+        pathname: "/(protected)/(book)/confirm-pickup",
+        params: { mode: "pickup" },
+      } as any);
+    } catch (err: any) {
+      const message =
+        err?.data?.error?.message ??
+        err?.data?.message ??
+        err?.message ??
+        "Failed to save your payment method. Please try again.";
+
+      Alert.alert("Payment method failed", message);
+    }
+  };
+
+  const savedCardLabel =
+    existingPayment?.card?.brand && existingPayment?.card?.last4
+      ? `${existingPayment.card.brand} ending in ${existingPayment.card.last4}`
+      : null;
 
   return (
     <BottomSheetView style={styles.bottomSheet}>
@@ -82,131 +193,59 @@ const PaymentScreen = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Section */}
-        <Text style={styles.headerText}>Payment screen</Text>
+        <Text style={styles.headerText}>Payment details</Text>
         <Text style={styles.subHeaderText}>
           Your card will not be charged until the trip is complete.
         </Text>
 
-        {/* Country Selector */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Country</Text>
-          <Controller
-            control={control}
-            name="country"
-            render={({ field: { value, onChange } }) => (
-              <Dropdown
-                style={styles.dropdown}
-                data={countryOptions}
-                labelField="label"
-                valueField="value"
-                value={value}
-                placeholder="Choose country"
-                dropdownPosition="bottom"
-                containerStyle={styles.dropdownMenuContainer}
-                onChange={(item) => onChange(String(item.value ?? ""))}
-              />
-            )}
-          />
-          {!!errors.country?.message && (
-            <Text style={styles.errorText}>{errors.country.message}</Text>
-          )}
-        </View>
-
-        {/* Row for Expiry and CVV */}
-        <View style={styles.row}>
-          <View
-            style={[styles.inputGroup, { flex: 1, marginRight: scale(10) }]}
-          >
-            <Text style={styles.label}>Expiration date</Text>
-            <View style={styles.inputWrapper}>
-              <Controller
-                control={control}
-                name="expirationDate"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <BottomSheetTextInput
-                    style={styles.input}
-                    placeholder="MM/YY"
-                    placeholderTextColor="#999"
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    autoCapitalize="none"
-                    maxLength={5}
-                  />
-                )}
-              />
-            </View>
-            {!!errors.expirationDate?.message && (
-              <Text style={styles.errorText}>{errors.expirationDate.message}</Text>
-            )}
+          <View style={styles.textBlock}>
+            <Text style={styles.label}>Card details</Text>
+            <Text style={styles.hintText}>
+              Stripe will securely save your card before you confirm pickup.
+            </Text>
+            {savedCardLabel ? (
+              <Text style={styles.savedCardText}>
+                Saved card on file: {savedCardLabel}
+              </Text>
+            ) : null}
           </View>
 
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>CVV</Text>
-            <View style={styles.inputWrapper}>
-              <Controller
-                control={control}
-                name="cvv"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <BottomSheetTextInput
-                    style={styles.input}
-                    placeholder="123"
-                    placeholderTextColor="#999"
-                    secureTextEntry
-                    maxLength={4}
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    keyboardType="number-pad"
-                  />
-                )}
-              />
-            </View>
-            {!!errors.cvv?.message && (
-              <Text style={styles.errorText}>{errors.cvv.message}</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Card Number Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Card number</Text>
-          <View style={styles.inputWrapper}>
-            <Controller
-              control={control}
-              name="cardNumber"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <BottomSheetTextInput
-                  style={styles.input}
-                  placeholder="1111 2222 3333 4444"
-                  placeholderTextColor="#999"
-                  keyboardType="number-pad"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  maxLength={23}
-                />
-              )}
+          <View style={styles.cardContainer}>
+            <CardForm
+              style={styles.cardForm}
+              onFormComplete={setCardDetails}
+              cardStyle={{
+                backgroundColor: "#FFFFFF",
+                borderColor: colors.main,
+                borderWidth: 1,
+                borderRadius: 14,
+                fontSize: 16,
+                placeholderColor: "#6C6C6C",
+                textColor: "#1A1A1A",
+              }}
+              placeholders={{
+                number: "4242 4242 4242 4242",
+                expiration: "MM/YY",
+                cvc: "CVC",
+                postalCode: "ZIP",
+              }}
+              disabled={isLoading}
             />
-            <View style={styles.cardIcons}>
-              <Image
-                style={{ height: 60, width: 60 }}
-                source={require("@/assets/icons/masterCard.svg")}
-                contentFit="contain"
-              />
-            </View>
           </View>
-          {!!errors.cardNumber?.message && (
-            <Text style={styles.errorText}>{errors.cardNumber.message}</Text>
-          )}
         </View>
 
-        {/* Bottom Button */}
         <CustomButton
-          text="Next confirm pickup spot"
+          text={
+            existingPayment
+              ? cardDetails?.complete
+                ? "Save new card"
+                : "Continue to confirm pickup"
+              : "Next confirm pickup spot"
+          }
           style={styles.confirmButton}
-          onClick={onSubmit}
+          onClick={handleSubmit}
+          isLoading={isLoading}
         />
       </BottomSheetScrollView>
     </BottomSheetView>
@@ -218,7 +257,7 @@ export default PaymentScreen;
 const styles = StyleSheet.create({
   bottomSheet: {
     flex: 1,
-    paddingHorizontal: scale(20),
+    paddingHorizontal: scale(15),
     paddingTop: verticalScale(20),
   },
   formContent: {
@@ -231,16 +270,20 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   subHeaderText: {
-    width: scale(240),
+    width: scale(260),
     fontSize: moderateScale(14),
     textAlign: "center",
     color: "#00A86B",
-    marginVertical: verticalScale(2),
+    marginTop: verticalScale(2),
+    marginBottom: verticalScale(10),
     lineHeight: moderateScale(20),
     marginHorizontal: "auto",
   },
   inputGroup: {
-    marginTop: verticalScale(10),
+    marginTop: verticalScale(12),
+  },
+  textBlock: {
+    paddingHorizontal: scale(10),
   },
   label: {
     fontSize: moderateScale(14),
@@ -248,56 +291,29 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: verticalScale(8),
   },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  hintText: {
+    fontSize: moderateScale(12),
+    color: "#6C6C6C",
+    marginBottom: verticalScale(10),
+  },
+  savedCardText: {
+    fontSize: moderateScale(12),
+    color: colors.main,
+    fontWeight: "600",
+    marginBottom: verticalScale(8),
+  },
+  cardContainer: {
     borderWidth: 1,
     borderColor: "#DAD6FF",
-    borderRadius: scale(12),
-    paddingHorizontal: scale(15),
-    height: verticalScale(40),
+    borderRadius: scale(18),
+    padding: scale(12),
+    backgroundColor: "#F7F5FF",
   },
-  input: {
-    flex: 1,
-    fontSize: moderateScale(14),
-  },
-  cardIcons: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  rowAlignCenter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: scale(10),
-  },
-  countryText: {
-    fontSize: moderateScale(14),
-    color: "#999",
-    marginLeft: scale(10),
+  cardForm: {
+    width: "100%",
+    height: verticalScale(210),
   },
   confirmButton: {
-    marginTop: verticalScale(15),
-  },
-  dropdown: {
-    height: verticalScale(40),
-    borderColor: "#DAD6FF",
-    borderWidth: 1,
-    borderRadius: scale(12),
-    paddingHorizontal: scale(15),
-    justifyContent: "center",
-  },
-  dropdownMenuContainer: {
-    borderRadius: scale(12),
-    overflow: "hidden",
-  },
-  errorText: {
-    color: "#D14343",
-    fontSize: moderateScale(11),
-    marginTop: verticalScale(4),
+    marginTop: verticalScale(20),
   },
 });

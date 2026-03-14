@@ -11,7 +11,8 @@ export default {
     ios: {
       supportsTablet: true,
       infoPlist: {
-        NSLocationWhenInUseUsageDescription: "We need your location to provide pickup suggestions",
+        NSLocationWhenInUseUsageDescription:
+          "We need your location to provide pickup suggestions",
       },
       bundleIdentifier: "com.app.ma3",
       config: {
@@ -42,6 +43,13 @@ export default {
       favicon: "./assets/images/favicon.png",
     },
     plugins: [
+      [
+        "@stripe/stripe-react-native",
+        {
+          merchantIdentifier: "merchant.com.your.applepay.id",
+        },
+      ],
+      "./plugins/withStripeCardFormAndroidTheme",
       [
         "react-native-maps",
         {
