@@ -1,4 +1,6 @@
 import { colors } from "@/config/colors";
+import { useGetDriverHomeQuery } from "@/redux/api/driverRIdeStart";
+import { useAppSelector } from "@/redux/hooks";
 import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -14,10 +16,12 @@ import DriverAvailabilityButton, {
   DriverCoordinate,
 } from "./DriverAvailabilityButton";
 import RequiredActions from "./RequiredActions";
-import { useAppSelector } from "@/redux/hooks";
 
 export default function HomeScreen() {
   const user = useAppSelector((state: RootState) => state.auth.user);
+  useGetDriverHomeQuery(undefined, {
+    skip: !user,
+  });
   const driverStatusMessage = useAppSelector(
     (state: RootState) => state.driverRideStart.message,
   );

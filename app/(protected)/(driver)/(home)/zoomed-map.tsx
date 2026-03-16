@@ -4,7 +4,10 @@ import { MarkerTriangle, MarkerUser } from "@/components/Markers";
 import RequestCard from "@/components/RequestCard";
 import RiderPickupCard from "@/components/RidePickupCard";
 import TopMapControlls from "@/components/TopMapControlls";
-import { useAcceptRideRequestMutation } from "@/redux/api/driverRIdeStart";
+import {
+  useAcceptRideRequestMutation,
+  useGetDriverHomeQuery,
+} from "@/redux/api/driverRIdeStart";
 import { useAppSelector } from "@/redux/hooks";
 import { RootState } from "@/redux/store";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -27,25 +30,25 @@ const DEFAULT_COORDINATE: Coordinate = {
   longitude: 90.4071,
 };
 
-const DUMMY_REQUEST_ID = "69b711a3d6942c6521a53cee";
-
-const DUMMY_REQUEST_PREVIEW = {
-  rideLabel: "REGULAR CAR (NORMAL)",
-  fare: 127.5,
-  pickupAddress: "Brac University Building 5",
-  dropoffAddress: "Hazrat Shahjalal Airport",
-  driverSharePercent: 60,
-};
-
 const { height } = Dimensions.get("window");
 
-const pointToCoordinate = ([longitude, latitude]: [number, number]): Coordinate => ({
+const pointToCoordinate = ([longitude, latitude]: [
+  number,
+  number,
+]): Coordinate => ({
   latitude,
   longitude,
 });
 
-const isCoordinate = (coordinate: Coordinate | null): coordinate is Coordinate =>
-  Boolean(coordinate);
+const formatRideLabel = (vehicleType?: string, tier?: string, size?: string) =>
+  [tier, vehicleType]
+    .filter(Boolean)
+    .map((value) => value!.toUpperCase())
+    .join(" ") + (size ? ` (${size.toUpperCase()})` : "");
+
+const isCoordinate = (
+  coordinate: Coordinate | null,
+): coordinate is Coordinate => Boolean(coordinate);
 
 const getApiErrorMessage = (error: any, fallbackMessage: string) =>
   error?.data?.error?.message ?? error?.data?.message ?? fallbackMessage;
@@ -97,23 +100,46 @@ export default function HomeScreen() {
   const hasFittedTripRef = useRef(false);
   const lastRouteOriginRef = useRef<Coordinate | null>(null);
   const lastRouteTargetRef = useRef("");
+  const hasUser = useAppSelector((state: RootState) =>
+    Boolean(state.auth.user),
+  );
+  useGetDriverHomeQuery(undefined, {
+    skip: !hasUser,
+  });
   const [acceptRideRequest, { isLoading: isAcceptingRideRequest }] =
     useAcceptRideRequestMutation();
 
-  const { isOnline, location: storedDriverLocation, activeTrip } = useAppSelector(
-    (state: RootState) => state.driverRideStart,
-  );
+  const {
+    isOnline,
+    location: storedDriverLocation,
+    activeTrip,
+    activeRideRequest,
+  } = useAppSelector((state: RootState) => state.driverRideStart);
 
   const initialDriverLocation = storedDriverLocation
     ? pointToCoordinate(storedDriverLocation.point.coordinates)
     : DEFAULT_COORDINATE;
 
-  const [driverLocation, setDriverLocation] =
-    useState<Coordinate>(initialDriverLocation);
+  const [driverLocation, setDriverLocation] = useState<Coordinate>(
+    initialDriverLocation,
+  );
   const [heading, setHeading] = useState(0);
   const [, setArrived] = useState(false);
-  const [pendingRequestId, setPendingRequestId] = useState(DUMMY_REQUEST_ID);
   const [routePolyline, setRoutePolyline] = useState<Coordinate[]>([]);
+  const pendingRequestId = activeRideRequest?._id ?? "";
+  const requestPreview = activeRideRequest
+    ? {
+        rideLabel: formatRideLabel(
+          activeRideRequest.preference.vehicleType,
+          activeRideRequest.preference.tier,
+          activeRideRequest.preference.size,
+        ),
+        fare: activeRideRequest.quote.estimatedFare,
+        pickupAddress: activeRideRequest.pickup.address,
+        dropoffAddress: activeRideRequest.dropoff.address,
+        driverSharePercent: activeRideRequest.quote.driverSharePercent,
+      }
+    : null;
 
   const pickupCoordinate = activeTrip
     ? pointToCoordinate(activeTrip.pickup.point.coordinates)
@@ -121,28 +147,35 @@ export default function HomeScreen() {
   const dropoffCoordinate = activeTrip
     ? pointToCoordinate(activeTrip.dropoff.point.coordinates)
     : null;
-  const tripCoordinates = [pickupCoordinate].filter(isCoordinate);
+  const tripCoordinates = [pickupCoordinate, dropoffCoordinate].filter(
+    isCoordinate,
+  );
   const fallbackPolylineCoordinates =
     tripCoordinates.length > 0 ? [driverLocation, ...tripCoordinates] : [];
   const polylineCoordinates =
     routePolyline.length > 1 ? routePolyline : fallbackPolylineCoordinates;
-  const initialRegionCenter = pickupCoordinate ?? driverLocation;
+  const initialRegionCenter =
+    pickupCoordinate ?? dropoffCoordinate ?? driverLocation;
 
   useEffect(() => {
     if (storedDriverLocation) {
-      setDriverLocation(pointToCoordinate(storedDriverLocation.point.coordinates));
+      setDriverLocation(
+        pointToCoordinate(storedDriverLocation.point.coordinates),
+      );
     }
   }, [storedDriverLocation]);
 
   useEffect(() => {
-    if (!pickupCoordinate) {
+    if (tripCoordinates.length === 0) {
       lastRouteOriginRef.current = null;
       lastRouteTargetRef.current = "";
       setRoutePolyline([]);
       return;
     }
 
-    const routeSignature = `${pickupCoordinate.latitude},${pickupCoordinate.longitude}`;
+    const routeSignature = tripCoordinates
+      .map((coordinate) => `${coordinate.latitude},${coordinate.longitude}`)
+      .join("|");
     const lastRouteOrigin = lastRouteOriginRef.current;
     const hasRouteTargetChanged = lastRouteTargetRef.current !== routeSignature;
     const hasMovedEnough =
@@ -162,7 +195,7 @@ export default function HomeScreen() {
     lastRouteTargetRef.current = routeSignature;
 
     let cancelled = false;
-    const fallbackCoordinates = [driverLocation, pickupCoordinate];
+    const fallbackCoordinates = [driverLocation, ...tripCoordinates];
 
     const fetchRoadPolyline = async () => {
       if (!GOOGLE_MAPS_API_KEY) {
@@ -170,11 +203,19 @@ export default function HomeScreen() {
         return;
       }
 
-      const destination = pickupCoordinate;
+      const destination = tripCoordinates[tripCoordinates.length - 1];
+      const waypointCoordinates = tripCoordinates.slice(0, -1);
+      const waypointQuery = waypointCoordinates.length
+        ? `&waypoints=${waypointCoordinates
+            .map(
+              (coordinate) => `${coordinate.latitude},${coordinate.longitude}`,
+            )
+            .join("|")}`
+        : "";
 
       try {
         const response = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${driverLocation.latitude},${driverLocation.longitude}&destination=${destination.latitude},${destination.longitude}&key=${GOOGLE_MAPS_API_KEY}`,
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${driverLocation.latitude},${driverLocation.longitude}&destination=${destination.latitude},${destination.longitude}${waypointQuery}&key=${GOOGLE_MAPS_API_KEY}`,
         );
         const data = await response.json();
         const encodedPoints: string | undefined =
@@ -212,6 +253,8 @@ export default function HomeScreen() {
     driverLocation.longitude,
     pickupCoordinate?.latitude,
     pickupCoordinate?.longitude,
+    dropoffCoordinate?.latitude,
+    dropoffCoordinate?.longitude,
   ]);
 
   useEffect(() => {
@@ -232,7 +275,7 @@ export default function HomeScreen() {
     const coordinates =
       routePolyline.length > 1
         ? routePolyline
-        : [driverLocation, pickupCoordinate].filter(isCoordinate);
+        : [driverLocation, ...tripCoordinates];
 
     if (coordinates.length < 2) {
       return;
@@ -309,7 +352,6 @@ export default function HomeScreen() {
 
     try {
       await acceptRideRequest({ requestId: pendingRequestId }).unwrap();
-      setPendingRequestId("");
     } catch (error: any) {
       Alert.alert(
         "Accept request failed",
@@ -320,7 +362,10 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.mainContainer}>
-      <TopMapControlls driverLocation={driverLocation} />
+      <TopMapControlls
+        driverLocation={driverLocation}
+        price={activeTrip?.pricing.finalFare}
+      />
 
       <MapView
         ref={mapRef}
@@ -365,15 +410,15 @@ export default function HomeScreen() {
         )}
       </MapView>
 
-      {pendingRequestId && !activeTrip && (
+      {pendingRequestId && !activeTrip && requestPreview && (
         <RequestCard
           onAccept={handleAcceptRequest}
           isLoading={isAcceptingRideRequest}
-          rideLabel={DUMMY_REQUEST_PREVIEW.rideLabel}
-          fare={DUMMY_REQUEST_PREVIEW.fare}
-          pickupAddress={DUMMY_REQUEST_PREVIEW.pickupAddress}
-          dropoffAddress={DUMMY_REQUEST_PREVIEW.dropoffAddress}
-          driverSharePercent={DUMMY_REQUEST_PREVIEW.driverSharePercent}
+          rideLabel={requestPreview.rideLabel}
+          fare={requestPreview.fare}
+          pickupAddress={requestPreview.pickupAddress}
+          dropoffAddress={requestPreview.dropoffAddress}
+          driverSharePercent={requestPreview.driverSharePercent}
         />
       )}
 

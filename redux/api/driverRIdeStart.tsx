@@ -1,3 +1,4 @@
+import type { RideRequestItem } from "../slices/rideBookSlice";
 import { baseApi } from "./baseApi";
 
 export type DriverGoOnlinePayload = {
@@ -83,6 +84,36 @@ export type DriverAcceptedTrip = {
   updatedAt: string;
 };
 
+export type DriverHomeProfile = {
+  _id: string;
+  name: string;
+  profileImage: string | null;
+};
+
+export type DriverHomeDriverProfile = {
+  status: string;
+  isOnline: boolean;
+  isBusy: boolean;
+  documentsStatus: string;
+  requiredActionsCount: number;
+  earningsTotal: number;
+  tripsCount: number;
+  activeVehicleId: string | null;
+};
+
+export type DriverHomeData = {
+  profile: DriverHomeProfile;
+  driverProfile: DriverHomeDriverProfile;
+  activeRideRequest: RideRequestItem | null;
+  activeTrip: DriverAcceptedTrip | null;
+};
+
+export type DriverHomeResponse = {
+  success: boolean;
+  message: string;
+  data: DriverHomeData;
+};
+
 export type AcceptRideRequestPayload = {
   requestId: string;
 };
@@ -100,6 +131,12 @@ export type AcceptRideRequestResponse = {
 
 export const driverRideStartApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getDriverHome: builder.query<DriverHomeResponse, void>({
+      query: () => ({
+        url: "driverHome/home",
+        method: "GET",
+      }),
+    }),
     goOnline: builder.mutation<DriverRideStatusResponse, DriverGoOnlinePayload>({
       query: (body) => ({
         url: "driverHome/go-online",
@@ -126,6 +163,7 @@ export const driverRideStartApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetDriverHomeQuery,
   useGoOnlineMutation,
   useGoOfflineMutation,
   useAcceptRideRequestMutation,

@@ -18,11 +18,10 @@ import DriverAvailabilityButton, {
 type TopMapControllsProps = {
   driverLocation?: DriverCoordinate | null;
   onStatusChange?: (isOnline: boolean) => void;
+  price?: number;
 };
 
-const TopMapControlls = ({
-  driverLocation,
-}: TopMapControllsProps) => {
+const TopMapControlls = ({ driverLocation, price }: TopMapControllsProps) => {
   const [isEyeOpened, setIsEyeOpened] = useState(true);
 
   // Reanimated shared value
@@ -51,7 +50,8 @@ const TopMapControlls = ({
         {!isEyeOpened && (
           <View style={[{ flexDirection: "row", alignItems: "center" }]}>
             <Text style={styles.walletText} numberOfLines={1}>
-              <Text style={{ color: "#FFD283" }}>USD</Text> 0.00
+              <Text style={{ color: "#FFD283" }}>USD</Text>{" "}
+              {price?.toFixed(2)}
             </Text>
           </View>
         )}
@@ -70,7 +70,7 @@ const TopMapControlls = ({
       {/* Button */}
       <View style={styles.statusButtonWrapper}>
         <DriverAvailabilityButton
-        text={false}
+          text={false}
           driverLocation={driverLocation}
           style={styles.goOnlineButton}
           textStyle={styles.goOnlineText}
@@ -86,7 +86,7 @@ export default TopMapControlls;
 const styles = StyleSheet.create({
   topControls: {
     position: "absolute",
-    top: verticalScale(30),
+    top: verticalScale(35),
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     minHeight: scale(40),
     overflow: "hidden",
-    gap: scale(8),
+    gap: scale(3),
   },
   walletText: {
     color: "white",

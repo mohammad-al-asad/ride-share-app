@@ -2,16 +2,29 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 
 const RequiredActions = () => {
+  const requiredActionsCount = useAppSelector(
+    (state: RootState) => state.driverRideStart.requiredActionsCount,
+  );
+  const hasRequiredActions = requiredActionsCount > 0;
+
   return (
     <View style={[styles.alertCard]}>
       <View style={styles.alertIconBg}>
         <Ionicons name="alert-circle" size={scale(20)} color="white" />
       </View>
       <View style={styles.alertTextContainer}>
-        <Text style={styles.alertTitle}>Required actions (1)</Text>
-        <Text style={styles.alertSubtitle}>Go online when resolved</Text>
+        <Text style={styles.alertTitle}>
+          Required actions ({requiredActionsCount})
+        </Text>
+        <Text style={styles.alertSubtitle}>
+          {hasRequiredActions
+            ? "Go online when resolved"
+            : "You're ready to go online"}
+        </Text>
       </View>
     </View>
   );
