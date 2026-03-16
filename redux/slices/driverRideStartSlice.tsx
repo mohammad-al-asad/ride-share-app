@@ -1,5 +1,6 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 import {
+  DriverAcceptedTrip,
   DriverRideLocation,
   DriverRideStatusData,
   driverRideStartApi,
@@ -10,6 +11,7 @@ type DriverRideStartState = {
   isOnline: boolean;
   isBusy: boolean;
   location: DriverRideLocation | null;
+  activeTrip: DriverAcceptedTrip | null;
 };
 
 const initialState: DriverRideStartState = {
@@ -17,6 +19,7 @@ const initialState: DriverRideStartState = {
   isOnline: false,
   isBusy: false,
   location: null,
+  activeTrip: null,
 };
 
 const applyDriverStatus = (
@@ -40,7 +43,7 @@ const driverRideStartSlice = createSlice({
       state,
       action: PayloadAction<Partial<DriverRideStartState>>,
     ) => {
-      const { message, isOnline, isBusy, location } = action.payload;
+      const { message, isOnline, isBusy, location, activeTrip } = action.payload;
 
       if (message !== undefined) {
         state.message = message;
@@ -53,6 +56,9 @@ const driverRideStartSlice = createSlice({
       }
       if (location !== undefined) {
         state.location = location ?? null;
+      }
+      if (activeTrip !== undefined) {
+        state.activeTrip = activeTrip ?? null;
       }
     },
     resetDriverRideStatus: () => initialState,
@@ -69,6 +75,14 @@ const driverRideStartSlice = createSlice({
         driverRideStartApi.endpoints.goOffline.matchFulfilled,
         (state, action) => {
           applyDriverStatus(state, action.payload.data);
+        },
+      )
+      .addMatcher(
+        driverRideStartApi.endpoints.acceptRideRequest.matchFulfilled,
+        (state, action) => {
+          state.message = action.payload.data.message;
+          state.isBusy = true;
+          state.activeTrip = action.payload.data.trip;
         },
       );
   },

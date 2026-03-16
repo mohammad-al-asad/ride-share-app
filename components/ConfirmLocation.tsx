@@ -357,6 +357,8 @@ const ConfirmLocation = ({
 
       const response = await createRideRequest(payload).unwrap();
       dispatch(setLatestRideRequest(response.data.rideRequest));
+      console.log(response.data.rideRequest);
+      
       router.replace("/(protected)/(book)/ride-map");
     } catch (err: any) {
       const message =

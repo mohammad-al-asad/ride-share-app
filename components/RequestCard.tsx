@@ -1,22 +1,42 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { moderateScale, scale } from "react-native-size-matters";
 
 type Props = {
   onAccept: () => void;
+  isLoading?: boolean;
+  rideLabel?: string;
+  fare?: number;
+  pickupAddress?: string;
+  dropoffAddress?: string;
+  driverSharePercent?: number;
 };
 
-const RequestCard = ({ onAccept }: Props) => {
+const RequestCard = ({
+  onAccept,
+  isLoading = false,
+  rideLabel = "PREMIUM VAN (COMPACT)",
+  fare = 5.54,
+  pickupAddress = "Brac University Building 5",
+  dropoffAddress = "Hazrat Shahjalal Airport",
+  driverSharePercent = 60,
+}: Props) => {
   return (
     <View style={styles.requestCard}>
       <TouchableOpacity style={styles.closeButton}>
         <Ionicons name="close" size={24} color="#333" />
       </TouchableOpacity>
 
-      <Text style={styles.serviceType}>PREMIUM VAN (COMPACT)</Text>
+      <Text style={styles.serviceType}>{rideLabel}</Text>
       <View style={styles.priceRow}>
-        <Text style={styles.priceText}>$5.54</Text>
+        <Text style={styles.priceText}>${fare.toFixed(2)}</Text>
       </View>
 
       <View style={styles.ratingBadge}>
@@ -32,7 +52,7 @@ const RequestCard = ({ onAccept }: Props) => {
           <Ionicons name="radio-button-on" size={20} color="#6366F1" />
           <View style={styles.locationInfo}>
             <Text style={styles.distanceText}>Pickup location 1.2 mi away</Text>
-            <Text style={styles.addressText}>Brac University Building 5</Text>
+            <Text style={styles.addressText}>{pickupAddress}</Text>
           </View>
         </View>
 
@@ -44,18 +64,28 @@ const RequestCard = ({ onAccept }: Props) => {
             <Text style={styles.distanceText}>
               Dropoff location 2.1 mi away
             </Text>
-            <Text style={styles.addressText}>Gulshan 1 DNCC Market</Text>
+            <Text style={styles.addressText}>{dropoffAddress}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.infoBox}>
         <Ionicons name="alert-circle-outline" size={18} color="#10B981" />
-        <Text style={styles.infoText}>You will get 60% of the total fare.</Text>
+        <Text style={styles.infoText}>
+          You will get {driverSharePercent}% of the total fare.
+        </Text>
       </View>
 
-      <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
-        <Text style={styles.acceptButtonText}>Accept</Text>
+      <TouchableOpacity
+        style={[styles.acceptButton, isLoading && styles.acceptButtonDisabled]}
+        onPress={onAccept}
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text style={styles.acceptButtonText}>Accept</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -146,6 +176,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 15,
     alignItems: "center",
+  },
+  acceptButtonDisabled: {
+    opacity: 0.7,
   },
   acceptButtonText: { color: "white", fontWeight: "700", fontSize: 18 },
 });
