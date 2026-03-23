@@ -18,8 +18,8 @@ export type DriverRideLocation = {
 
 export type DriverRideStatusData = {
   message: string;
-  isOnline: boolean;
-  isBusy: boolean;
+  isOnline?: boolean;
+  isBusy?: boolean;
   location?: DriverRideLocation;
 };
 
@@ -129,6 +129,45 @@ export type AcceptRideRequestResponse = {
   data: AcceptRideRequestData;
 };
 
+export type CancelTripPayload = {
+  tripId: string;
+};
+
+export type CancelTripData = {
+  message: string;
+  trip: DriverAcceptedTrip;
+};
+
+export type CancelTripResponse = {
+  success: boolean;
+  message: string;
+  data: CancelTripData;
+};
+
+export type DriverRiderProfile = {
+  _id: string;
+  name: string;
+  profileImage?: string | null;
+  ratingAvg?: number;
+  ratingCount?: number;
+};
+
+export type DriverRiderReview = {
+  _id?: string;
+  stars?: number;
+  comment?: string;
+  createdAt?: string;
+};
+
+export type DriverTripRiderProfileResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    rider: DriverRiderProfile;
+    reviews: DriverRiderReview[];
+  };
+};
+
 export const driverRideStartApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDriverHome: builder.query<DriverHomeResponse, void>({
@@ -150,6 +189,16 @@ export const driverRideStartApi = baseApi.injectEndpoints({
         method: "PATCH",
       }),
     }),
+    updateLocation: builder.mutation<
+      DriverRideStatusResponse,
+      DriverGoOnlinePayload
+    >({
+      query: (body) => ({
+        url: "driverHome/location",
+        method: "PATCH",
+        body,
+      }),
+    }),
     acceptRideRequest: builder.mutation<
       AcceptRideRequestResponse,
       AcceptRideRequestPayload
@@ -159,6 +208,18 @@ export const driverRideStartApi = baseApi.injectEndpoints({
         method: "PATCH",
       }),
     }),
+    cancelTrip: builder.mutation<CancelTripResponse, CancelTripPayload>({
+      query: ({ tripId }) => ({
+        url: `driverHome/trip/${tripId}/cancel`,
+        method: "PATCH",
+      }),
+    }),
+    getTripRiderProfile: builder.query<DriverTripRiderProfileResponse, string>({
+      query: (tripId) => ({
+        url: `driverHome/trip/${tripId}/rider-profile`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -166,5 +227,8 @@ export const {
   useGetDriverHomeQuery,
   useGoOnlineMutation,
   useGoOfflineMutation,
+  useUpdateLocationMutation,
   useAcceptRideRequestMutation,
+  useCancelTripMutation,
+  useGetTripRiderProfileQuery,
 } = driverRideStartApi;

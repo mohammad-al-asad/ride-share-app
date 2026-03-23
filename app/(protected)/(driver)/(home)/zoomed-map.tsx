@@ -1,29 +1,31 @@
 import { MarkerCircle } from "@/components/AnimatedMarker";
 import DriverAvailabilityButton from "@/components/DriverAvailabilityButton";
 import { MarkerTriangle, MarkerUser } from "@/components/Markers";
+import RoadPolyline from "@/components/RoadPolyline";
 import RequestCard from "@/components/RequestCard";
 import RiderPickupCard from "@/components/RidePickupCard";
 import TopMapControlls from "@/components/TopMapControlls";
+import { connectRealtimeSocket } from "@/config/realtime-socket";
 import {
   useAcceptRideRequestMutation,
   useGetDriverHomeQuery,
+  useUpdateLocationMutation,
 } from "@/redux/api/driverRIdeStart";
-import { useAppSelector } from "@/redux/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { setDriverRideStatus } from "@/redux/slices/driverRideStartSlice";
 import { RootState } from "@/redux/store";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 type Coordinate = {
   latitude: number;
   longitude: number;
 };
-
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_MAP_API_KEY;
 
 const DEFAULT_COORDINATE: Coordinate = {
   latitude: 23.7806,
@@ -53,61 +55,22 @@ const isCoordinate = (
 const getApiErrorMessage = (error: any, fallbackMessage: string) =>
   error?.data?.error?.message ?? error?.data?.message ?? fallbackMessage;
 
-const decodePolyline = (encoded: string): Coordinate[] => {
-  const coordinates: Coordinate[] = [];
-  let index = 0;
-  let latitude = 0;
-  let longitude = 0;
-
-  while (index < encoded.length) {
-    let result = 0;
-    let shift = 0;
-    let byte = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
-    latitude += deltaLat;
-
-    result = 0;
-    shift = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
-    longitude += deltaLng;
-
-    coordinates.push({
-      latitude: latitude / 1e5,
-      longitude: longitude / 1e5,
-    });
-  }
-
-  return coordinates;
-};
-
 export default function HomeScreen() {
+  const dispatch = useAppDispatch();
   const mapRef = useRef<MapView | null>(null);
   const bottomSheetRef = useRef<BottomSheet | null>(null);
   const hasFittedTripRef = useRef(false);
-  const lastRouteOriginRef = useRef<Coordinate | null>(null);
-  const lastRouteTargetRef = useRef("");
+  const lastLocationSyncRef = useRef(0);
   const hasUser = useAppSelector((state: RootState) =>
     Boolean(state.auth.user),
   );
+  const authToken = useAppSelector((state: RootState) => state.auth.token);
   useGetDriverHomeQuery(undefined, {
     skip: !hasUser,
   });
   const [acceptRideRequest, { isLoading: isAcceptingRideRequest }] =
     useAcceptRideRequestMutation();
+  const [updateLocation] = useUpdateLocationMutation();
 
   const {
     isOnline,
@@ -158,6 +121,73 @@ export default function HomeScreen() {
     pickupCoordinate ?? dropoffCoordinate ?? driverLocation;
 
   useEffect(() => {
+    if (!authToken || !hasUser) {
+      return;
+    }
+
+    const socket = connectRealtimeSocket(authToken);
+    if (!socket) {
+      return;
+    }
+
+    const handleQueueUpdate = (payload: any) => {
+      const requests = Array.isArray(payload?.requests) ? payload.requests : [];
+      dispatch(
+        setDriverRideStatus({
+          activeRideRequest: (requests[0] as any) ?? null,
+        }),
+      );
+    };
+
+    const handleRideRemoved = (payload: any) => {
+      if (!payload?.requestId || !pendingRequestId) {
+        return;
+      }
+
+      if (String(payload.requestId) !== String(pendingRequestId)) {
+        return;
+      }
+
+      dispatch(
+        setDriverRideStatus({
+          activeRideRequest: null,
+        }),
+      );
+    };
+
+    const handleRideAccepted = (payload: any) => {
+      if (!payload?.trip) {
+        return;
+      }
+
+      dispatch(
+        setDriverRideStatus({
+          activeRideRequest: null,
+          activeTrip: payload.trip,
+          isBusy: true,
+        }),
+      );
+    };
+
+    const handleQueueError = (payload: any) => {
+      console.log("ride-request:error", payload);
+    };
+
+    socket.on("ride-request:queue", handleQueueUpdate);
+    socket.on("ride-request:removed", handleRideRemoved);
+    socket.on("ride-request:accepted", handleRideAccepted);
+    socket.on("ride-request:error", handleQueueError);
+    socket.emit("ride-request:sync");
+
+    return () => {
+      socket.off("ride-request:queue", handleQueueUpdate);
+      socket.off("ride-request:removed", handleRideRemoved);
+      socket.off("ride-request:accepted", handleRideAccepted);
+      socket.off("ride-request:error", handleQueueError);
+    };
+  }, [authToken, dispatch, hasUser, pendingRequestId]);
+
+  useEffect(() => {
     if (storedDriverLocation) {
       setDriverLocation(
         pointToCoordinate(storedDriverLocation.point.coordinates),
@@ -167,104 +197,14 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (tripCoordinates.length === 0) {
-      lastRouteOriginRef.current = null;
-      lastRouteTargetRef.current = "";
       setRoutePolyline([]);
-      return;
     }
-
-    const routeSignature = tripCoordinates
-      .map((coordinate) => `${coordinate.latitude},${coordinate.longitude}`)
-      .join("|");
-    const lastRouteOrigin = lastRouteOriginRef.current;
-    const hasRouteTargetChanged = lastRouteTargetRef.current !== routeSignature;
-    const hasMovedEnough =
-      !lastRouteOrigin ||
-      getDistance(
-        lastRouteOrigin.latitude,
-        lastRouteOrigin.longitude,
-        driverLocation.latitude,
-        driverLocation.longitude,
-      ) > 50;
-
-    if (!hasRouteTargetChanged && !hasMovedEnough) {
-      return;
-    }
-
-    lastRouteOriginRef.current = driverLocation;
-    lastRouteTargetRef.current = routeSignature;
-
-    let cancelled = false;
-    const fallbackCoordinates = [driverLocation, ...tripCoordinates];
-
-    const fetchRoadPolyline = async () => {
-      if (!GOOGLE_MAPS_API_KEY) {
-        setRoutePolyline(fallbackCoordinates);
-        return;
-      }
-
-      const destination = tripCoordinates[tripCoordinates.length - 1];
-      const waypointCoordinates = tripCoordinates.slice(0, -1);
-      const waypointQuery = waypointCoordinates.length
-        ? `&waypoints=${waypointCoordinates
-            .map(
-              (coordinate) => `${coordinate.latitude},${coordinate.longitude}`,
-            )
-            .join("|")}`
-        : "";
-
-      try {
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${driverLocation.latitude},${driverLocation.longitude}&destination=${destination.latitude},${destination.longitude}${waypointQuery}&key=${GOOGLE_MAPS_API_KEY}`,
-        );
-        const data = await response.json();
-        const encodedPoints: string | undefined =
-          data?.routes?.[0]?.overview_polyline?.points;
-
-        if (!encodedPoints) {
-          if (!cancelled) {
-            setRoutePolyline(fallbackCoordinates);
-          }
-          return;
-        }
-
-        const decodedRoute = decodePolyline(encodedPoints);
-
-        if (!cancelled) {
-          setRoutePolyline(
-            decodedRoute.length > 1 ? decodedRoute : fallbackCoordinates,
-          );
-        }
-      } catch (error) {
-        console.log("Directions route fetch failed:", error);
-        if (!cancelled) {
-          setRoutePolyline(fallbackCoordinates);
-        }
-      }
-    };
-
-    fetchRoadPolyline();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    driverLocation.latitude,
-    driverLocation.longitude,
-    pickupCoordinate?.latitude,
-    pickupCoordinate?.longitude,
-    dropoffCoordinate?.latitude,
-    dropoffCoordinate?.longitude,
-  ]);
+  }, [tripCoordinates.length]);
 
   useEffect(() => {
     if (!activeTrip) {
       hasFittedTripRef.current = false;
       setArrived(false);
-      return;
-    }
-
-    if (GOOGLE_MAPS_API_KEY && routePolyline.length === 0) {
       return;
     }
 
@@ -319,6 +259,19 @@ export default function HomeScreen() {
             setDriverLocation(nextLocation);
             setHeading(loc.coords.heading || 0);
 
+            if (isOnline) {
+              const now = Date.now();
+              if (now - lastLocationSyncRef.current >= 2000) {
+                lastLocationSyncRef.current = now;
+                updateLocation({
+                  lat: nextLocation.latitude,
+                  lng: nextLocation.longitude,
+                }).catch(() => {
+                  // Ignore transient network failures; next tick retries.
+                });
+              }
+            }
+
             if (pickupCoordinate) {
               const distanceToPickup = getDistance(
                 nextLocation.latitude,
@@ -342,7 +295,12 @@ export default function HomeScreen() {
         subscription?.remove();
         subscription = null;
       };
-    }, [pickupCoordinate?.latitude, pickupCoordinate?.longitude]),
+    }, [
+      isOnline,
+      pickupCoordinate?.latitude,
+      pickupCoordinate?.longitude,
+      updateLocation,
+    ]),
   );
 
   const handleAcceptRequest = useCallback(async () => {
@@ -381,11 +339,13 @@ export default function HomeScreen() {
           longitudeDelta: 0.03,
         }}
       >
-        {polylineCoordinates.length > 1 && (
-          <Polyline
-            coordinates={polylineCoordinates}
+        {fallbackPolylineCoordinates.length > 1 && (
+          <RoadPolyline
+            coordinates={fallbackPolylineCoordinates}
             strokeWidth={5}
             strokeColor="#6366F1"
+            minOriginMovementMeters={50}
+            onRouteCoordinatesChange={setRoutePolyline}
           />
         )}
 
@@ -504,7 +464,7 @@ export default function HomeScreen() {
             marginTop: verticalScale(4),
           }}
         >
-          <RiderPickupCard />
+          <RiderPickupCard currentLocation={driverLocation} />
         </BottomSheet>
       )}
     </View>

@@ -1,26 +1,214 @@
 import { colors } from "@/config/colors";
+import {
+  useCancelTripMutation,
+  useGetTripRiderProfileQuery,
+} from "@/redux/api/driverRIdeStart";
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import ConfirmationModal from "./ConfirmationModal";
 import VerifyRiderModal from "./VerifyRiderModal";
 
-const RiderPickupCard = () => {
+const PRE_CANCEL_COUNTDOWN_SECONDS = 90; // 1.5 minutes
+const CANCEL_WINDOW_SECONDS = 270; // 4.5 minutes
+
+type CancelTimerPhase = "pre_cancel" | "cancel_window" | "ended";
+
+type Coordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+type RiderPickupCardProps = {
+  currentLocation: Coordinate | null;
+};
+
+const pointToCoordinate = ([longitude, latitude]: [
+  number,
+  number,
+]): Coordinate => ({
+  latitude,
+  longitude,
+});
+
+const getDistanceInMeters = (
+  origin: Coordinate,
+  destination: Coordinate,
+): number => {
+  const earthRadius = 6371e3;
+  const phi1 = (origin.latitude * Math.PI) / 180;
+  const phi2 = (destination.latitude * Math.PI) / 180;
+  const deltaPhi = ((destination.latitude - origin.latitude) * Math.PI) / 180;
+  const deltaLambda =
+    ((destination.longitude - origin.longitude) * Math.PI) / 180;
+
+  const a =
+    Math.sin(deltaPhi / 2) ** 2 +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadius * c;
+};
+
+const getApiErrorMessage = (error: any, fallbackMessage: string) =>
+  error?.data?.error?.message ?? error?.data?.message ?? fallbackMessage;
+
+const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
   const [isModal, setIsModal] = useState(false);
   const [isCancelModal, setIsCancelModal] = useState(false);
+  const [timerPhase, setTimerPhase] = useState<CancelTimerPhase>("pre_cancel");
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    PRE_CANCEL_COUNTDOWN_SECONDS,
+  );
+
+  const activeTrip = useAppSelector(
+    (state: RootState) => state.driverRideStart.activeTrip,
+  );
+  const tripId = activeTrip?._id ?? "";
+  const { data: riderProfileResponse } = useGetTripRiderProfileQuery(tripId, {
+    skip: !tripId,
+  });
+  const [cancelTrip, { isLoading: isCancelingTrip }] = useCancelTripMutation();
+  const showCancelButton = timerPhase !== "pre_cancel";
+  const centerTimerBadge = !showCancelButton;
+  const pickupCoordinate = useMemo(() => {
+    const coordinates = activeTrip?.pickup?.point?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      return null;
+    }
+
+    const [longitude, latitude] = coordinates;
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return null;
+    }
+
+    return pointToCoordinate([longitude, latitude]);
+  }, [activeTrip?.pickup?.point?.coordinates]);
+
+  const riderSummary = useMemo(() => {
+    const riderFromApi = riderProfileResponse?.data?.rider;
+    if (riderFromApi) {
+      return {
+        name: riderFromApi.name ?? "Rider",
+        profileImage: riderFromApi.profileImage ?? null,
+        ratingAvg: Number(riderFromApi.ratingAvg ?? 0),
+      };
+    }
+
+    const rider = (activeTrip as any)?.rider ?? (activeTrip as any)?.riderId;
+    if (rider && typeof rider === "object") {
+      return {
+        name: rider.name ?? "Rider",
+        profileImage: rider.profileImage ?? null,
+        ratingAvg: Number(rider.ratingAvg ?? 0),
+      };
+    }
+
+    return {
+      name: "Rider",
+      profileImage: null as string | null,
+      ratingAvg: 0,
+    };
+  }, [activeTrip, riderProfileResponse?.data?.rider]);
+
+  const statusLabel = useMemo(() => {
+    const status = activeTrip?.status;
+    if (status === "driver_arrived") return "Driver arrived at pickup";
+    if (status === "otp_verified") return "Rider verified";
+    if (status === "started") return "Trip in progress";
+    if (status === "completed") return "Trip completed";
+    if (status === "cancelled") return "Trip cancelled";
+    return "Picking up rider";
+  }, [activeTrip?.status]);
+
+  const distanceText = useMemo(() => {
+    if (currentLocation && pickupCoordinate) {
+      const meters = getDistanceInMeters(currentLocation, pickupCoordinate);
+      const miles = meters / 1609.344;
+      return `${miles.toFixed(1)} mi`;
+    }
+
+    return "--";
+  }, [currentLocation, pickupCoordinate]);
+
+  useEffect(() => {
+    if (!tripId) {
+      setTimerPhase("pre_cancel");
+      setRemainingSeconds(PRE_CANCEL_COUNTDOWN_SECONDS);
+      return;
+    }
+
+    setTimerPhase("pre_cancel");
+    setRemainingSeconds(PRE_CANCEL_COUNTDOWN_SECONDS);
+  }, [tripId]);
+
+  useEffect(() => {
+    if (!tripId || timerPhase === "ended") {
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      setRemainingSeconds((previous) => {
+        if (previous > 0) {
+          return previous - 1;
+        }
+
+        if (timerPhase === "pre_cancel") {
+          setTimerPhase("cancel_window");
+          return CANCEL_WINDOW_SECONDS;
+        }
+
+        setTimerPhase("ended");
+        return 0;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [tripId, timerPhase]);
+
+  const timerText = useMemo(() => {
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }, [remainingSeconds]);
+
+  const riderAvatarSource = riderSummary.profileImage
+    ? { uri: riderSummary.profileImage }
+    : require("../assets/images/demo-profile.png");
+
+  const handleCancelTrip = useCallback(async () => {
+    if (!tripId) {
+      setIsCancelModal(false);
+      return;
+    }
+
+    try {
+      await cancelTrip({ tripId }).unwrap();
+      setIsCancelModal(false);
+    } catch (error: any) {
+      Alert.alert(
+        "Cancel trip failed",
+        getApiErrorMessage(error, "Could not cancel this trip."),
+      );
+    }
+  }, [cancelTrip, tripId]);
+
   return (
     <View style={styles.container}>
       <ConfirmationModal
         visible={isCancelModal}
         onClose={() => setIsCancelModal(false)}
-        onConfirm={() => setIsCancelModal(false)}
+        onConfirm={handleCancelTrip}
         title="Are you sure you want to Cancel the ride?"
         message="Once canceled, you won't be able to recover this ride. Please confirm your action."
         confirmLabel="Yes"
         cancelLabel="No"
+        isLoading={isCancelingTrip}
       />
       <VerifyRiderModal
         isVisible={isModal}
@@ -33,35 +221,41 @@ const RiderPickupCard = () => {
           <View style={styles.personIconCircle}>
             <Ionicons name="person" size={scale(16)} color="#6366F1" />
           </View>
-          <Text style={styles.distanceText}>1.2 mi</Text>
+          <Text style={styles.distanceText}>{distanceText}</Text>
         </View>
-        <Text style={styles.subtext}>Picking up Tuval</Text>
+        <Text style={styles.subtext}>{statusLabel}</Text>
       </View>
 
       <View style={styles.actionRow}>
-        <View style={styles.timerBadge}>
-          <Text style={styles.timerText}>0:00</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => setIsCancelModal(true)}
+        <View
+          style={[
+            styles.timerBadge,
+            centerTimerBadge ? styles.timerBadgeCentered : styles.timerBadgeLeft,
+          ]}
         >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+          <Text style={styles.timerText}>{timerText}</Text>
+        </View>
+        {showCancelButton && (
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setIsCancelModal(true)}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        )}
       </View>
       {/* Main Card */}
       <View style={styles.card}>
         <View style={styles.topSection}>
           <View style={styles.riderInfo}>
-            <Image
-              source={require("../assets/images/demo-profile.png")}
-              style={styles.avatar}
-            />
+            <Image source={riderAvatarSource} style={styles.avatar} />
             <View>
-              <Text style={styles.riderName}>Tuval Mor</Text>
+              <Text style={styles.riderName}>{riderSummary.name}</Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={scale(14)} color="#FFD700" />
-                <Text style={styles.ratingText}>4.5</Text>
+                <Text style={styles.ratingText}>
+                  {riderSummary.ratingAvg.toFixed(1)}
+                </Text>
               </View>
             </View>
           </View>
@@ -113,7 +307,7 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     alignItems: "center",
-        paddingTop:20
+    paddingTop: 20,
   },
   headerInfo: {
     alignItems: "center",
@@ -226,13 +420,21 @@ const styles = StyleSheet.create({
   timerBadge: {
     height: scale(30),
     position: "absolute",
+    minWidth: scale(62),
     backgroundColor: "#A5B4FC",
     paddingHorizontal: scale(15),
     paddingVertical: scale(5),
     borderRadius: scale(8),
     borderWidth: 1,
     borderColor: colors.main,
+    alignItems: "center",
+  },
+  timerBadgeLeft: {
     left: 0,
+  },
+  timerBadgeCentered: {
+    left: "50%",
+    transform: [{ translateX: -scale(31) }],
   },
   timerText: {
     color: colors.main,

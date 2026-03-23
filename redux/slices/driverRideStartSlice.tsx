@@ -42,8 +42,14 @@ const applyDriverStatus = (
   payload: DriverRideStatusData,
 ) => {
   state.message = payload.message;
-  state.isOnline = payload.isOnline;
-  state.isBusy = payload.isBusy;
+
+  if (typeof payload.isOnline === "boolean") {
+    state.isOnline = payload.isOnline;
+  }
+
+  if (typeof payload.isBusy === "boolean") {
+    state.isBusy = payload.isBusy;
+  }
 
   if (payload.location) {
     state.location = payload.location;
@@ -150,12 +156,26 @@ const driverRideStartSlice = createSlice({
         },
       )
       .addMatcher(
+        driverRideStartApi.endpoints.updateLocation.matchFulfilled,
+        (state, action) => {
+          applyDriverStatus(state, action.payload.data);
+        },
+      )
+      .addMatcher(
         driverRideStartApi.endpoints.acceptRideRequest.matchFulfilled,
         (state, action) => {
           state.message = action.payload.data.message;
           state.isBusy = true;
           state.activeTrip = action.payload.data.trip;
           state.activeRideRequest = null;
+        },
+      )
+      .addMatcher(
+        driverRideStartApi.endpoints.cancelTrip.matchFulfilled,
+        (state, action) => {
+          state.message = action.payload.data.message;
+          state.isBusy = false;
+          state.activeTrip = null;
         },
       );
   },

@@ -2,6 +2,8 @@ import { MarkerCircle } from "@/components/AnimatedMarker";
 import CarSelection from "@/components/CarSelection";
 import { MarkerCar, MarkerTriangle } from "@/components/Markers";
 import PaymentScreen from "@/components/PaymentCard";
+import RoadPolyline from "@/components/RoadPolyline";
+import { useGetNearbyDriversMutation } from "@/redux/api/rideBookApi";
 import { useAppSelector } from "@/redux/hooks";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -14,68 +16,22 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { scale, verticalScale } from "react-native-size-matters";
 const { height } = Dimensions.get("window");
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_MAP_API_KEY;
 
 const DEFAULT_COORDINATE = {
   latitude: 23.7806,
   longitude: 90.4071,
 };
 
-type MapCoordinate = {
-  latitude: number;
-  longitude: number;
-};
-
-const decodePolyline = (encoded: string): MapCoordinate[] => {
-  const coordinates: MapCoordinate[] = [];
-  let index = 0;
-  let latitude = 0;
-  let longitude = 0;
-
-  while (index < encoded.length) {
-    let result = 0;
-    let shift = 0;
-    let byte = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
-    latitude += deltaLat;
-
-    result = 0;
-    shift = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLng = result & 1 ? ~(result >> 1) : result >> 1;
-    longitude += deltaLng;
-
-    coordinates.push({
-      latitude: latitude / 1e5,
-      longitude: longitude / 1e5,
-    });
-  }
-
-  return coordinates;
-};
-
 export default function ChooseRideScreen() {
   const mapRef = useRef<MapView | null>(null);
   const bottomSheetRef = useRef<BottomSheet | null>(null);
   const [ispayment, setIspayment] = useState(false);
+  const [getNearbyDrivers, { data: nearbyDriversResponse }] =
+    useGetNearbyDriversMutation();
   const { pickup, dropoff } = useAppSelector((state) => state.rideBook.step1);
-  const [routePolyline, setRoutePolyline] = useState<MapCoordinate[]>([]);
 
   const handleBackPress = useCallback(() => {
     if (ispayment) {
@@ -95,16 +51,34 @@ export default function ChooseRideScreen() {
     [dropoff?.lat, dropoff?.lng],
   );
 
-  const carCoordinate = useMemo(() => {
-    if (!pickupCoordinate || !dropoffCoordinate) {
-      return null;
-    }
+  const nearbyDriverCoordinates = useMemo(
+    () =>
+      (nearbyDriversResponse?.data?.drivers ?? [])
+        .map((driver) => {
+          const coordinates = driver.location?.point?.coordinates;
+          if (
+            !coordinates ||
+            coordinates.length < 2 ||
+            typeof coordinates[0] !== "number" ||
+            typeof coordinates[1] !== "number"
+          ) {
+            return null;
+          }
 
-    return {
-      latitude: (pickupCoordinate.latitude + dropoffCoordinate.latitude) / 2,
-      longitude: (pickupCoordinate.longitude + dropoffCoordinate.longitude) / 2,
-    };
-  }, [dropoffCoordinate, pickupCoordinate]);
+          return {
+            driverId: driver.driverId,
+            latitude: coordinates[1],
+            longitude: coordinates[0],
+          };
+        })
+        .filter(
+          (
+            driver,
+          ): driver is { driverId: string; latitude: number; longitude: number } =>
+            driver !== null,
+        ),
+    [nearbyDriversResponse?.data?.drivers],
+  );
 
   const initialRegion = useMemo(() => {
     if (!pickupCoordinate || !dropoffCoordinate) {
@@ -141,73 +115,22 @@ export default function ChooseRideScreen() {
   }, [dropoffCoordinate, pickupCoordinate]);
 
   useEffect(() => {
-    let cancelled = false;
+    const sourceCoordinate = pickupCoordinate ?? DEFAULT_COORDINATE;
 
-    const fetchRoadPolyline = async () => {
-      if (!pickupCoordinate || !dropoffCoordinate) {
-        setRoutePolyline([]);
-        return;
-      }
-
-      if (!GOOGLE_MAPS_API_KEY) {
-        setRoutePolyline([pickupCoordinate, dropoffCoordinate]);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${pickupCoordinate.latitude},${pickupCoordinate.longitude}&destination=${dropoffCoordinate.latitude},${dropoffCoordinate.longitude}&key=${GOOGLE_MAPS_API_KEY}`,
-        );
-        const data = await response.json();
-        const encodedPoints: string | undefined =
-          data?.routes?.[0]?.overview_polyline?.points;
-
-        if (!encodedPoints) {
-          if (!cancelled) {
-            setRoutePolyline([pickupCoordinate, dropoffCoordinate]);
-          }
-          return;
-        }
-
-        const decodedRoute = decodePolyline(encodedPoints);
-        if (!cancelled) {
-          setRoutePolyline(
-            decodedRoute.length > 1
-              ? decodedRoute
-              : [pickupCoordinate, dropoffCoordinate],
-          );
-        }
-      } catch (error) {
-        console.log("Directions route fetch failed:", error);
-        if (!cancelled) {
-          setRoutePolyline([pickupCoordinate, dropoffCoordinate]);
-        }
-      }
-    };
-
-    fetchRoadPolyline();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    dropoffCoordinate?.latitude,
-    dropoffCoordinate?.longitude,
-    pickupCoordinate?.latitude,
-    pickupCoordinate?.longitude,
-  ]);
+    getNearbyDrivers({
+      lat: sourceCoordinate.latitude,
+      lng: sourceCoordinate.longitude,
+    }).catch((error) => {
+      console.log("Nearby drivers fetch failed:", error);
+    });
+  }, [getNearbyDrivers, pickupCoordinate?.latitude, pickupCoordinate?.longitude]);
 
   useEffect(() => {
     if (!pickupCoordinate || !dropoffCoordinate || !mapRef.current) {
       return;
     }
 
-    const coordinatesToFit =
-      routePolyline.length > 1
-        ? routePolyline
-        : [pickupCoordinate, dropoffCoordinate];
-
-    mapRef.current.fitToCoordinates(coordinatesToFit, {
+    mapRef.current.fitToCoordinates([pickupCoordinate, dropoffCoordinate], {
       edgePadding: {
         top: 80,
         right: 60,
@@ -216,7 +139,7 @@ export default function ChooseRideScreen() {
       },
       animated: true,
     });
-  }, [dropoffCoordinate, pickupCoordinate, routePolyline]);
+  }, [dropoffCoordinate, pickupCoordinate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -260,15 +183,22 @@ export default function ChooseRideScreen() {
           </Marker>
         )}
 
-        {carCoordinate && (
-          <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={carCoordinate}>
+        {nearbyDriverCoordinates.map((driver) => (
+          <Marker
+            key={driver.driverId}
+            anchor={{ x: 0.5, y: 0.5 }}
+            coordinate={{
+              latitude: driver.latitude,
+              longitude: driver.longitude,
+            }}
+          >
             <MarkerCar />
           </Marker>
-        )}
+        ))}
 
-        {pickupCoordinate && dropoffCoordinate && routePolyline.length > 0 && (
-          <Polyline
-            coordinates={routePolyline}
+        {pickupCoordinate && dropoffCoordinate && (
+          <RoadPolyline
+            coordinates={[pickupCoordinate, dropoffCoordinate]}
             strokeColor="#6366F1"
             strokeWidth={4}
           />

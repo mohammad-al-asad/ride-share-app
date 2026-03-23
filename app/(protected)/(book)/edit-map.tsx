@@ -1,6 +1,7 @@
 import { MarkerCircle } from "@/components/AnimatedMarker";
 import FareModal from "@/components/FareModal";
 import { MarkerTriangle } from "@/components/Markers";
+import RoadPolyline from "@/components/RoadPolyline";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
@@ -14,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_MAP_API_KEY;
@@ -170,7 +171,7 @@ export default function MapSelectionScreen() {
           <MarkerTriangle />
         </Marker>
 
-        <Polyline
+        <RoadPolyline
           coordinates={routeCoordinates}
           strokeColor="#7B61FF"
           strokeWidth={4}

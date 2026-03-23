@@ -48,6 +48,43 @@ type SavePaymentMethodResponse = {
   error?: unknown;
 };
 
+type NearbyDriversRequest = {
+  lat: number;
+  lng: number;
+};
+
+type NearbyDriver = {
+  driverId: string;
+  name: string;
+  profileImage: string;
+  ratingAvg: number;
+  ratingCount: number;
+  location: {
+    point: {
+      type: "Point";
+      coordinates: [number, number];
+    };
+    updatedAt: string;
+  };
+  vehicle: {
+    _id: string;
+    brand: string;
+    model: string;
+    type: string;
+    size: string;
+    licensePlate: string;
+  };
+};
+
+type NearbyDriversResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    drivers: NearbyDriver[];
+    radiusKm: number;
+  };
+};
+
 export const rideBookApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getFareConfig: builder.query<FareConfigResponse, void>({
@@ -79,6 +116,15 @@ export const rideBookApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    getNearbyDrivers: builder.mutation<NearbyDriversResponse, NearbyDriversRequest>(
+      {
+        query: (body) => ({
+          url: "riderGetRide/nearby-drivers",
+          method: "POST",
+          body,
+        }),
+      },
+    ),
   }),
 });
 
@@ -87,4 +133,5 @@ export const {
   useCreateRideRequestMutation,
   useCreatePaymentSetupIntentMutation,
   useSavePaymentMethodMutation,
+  useGetNearbyDriversMutation,
 } = rideBookApi;

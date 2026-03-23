@@ -95,6 +95,83 @@ export type RideRequestItem = {
   updatedAt: string;
 };
 
+export type RidePoint = {
+  type: "Point";
+  coordinates: [number, number];
+};
+
+export type RideStop = {
+  address?: string;
+  point?: RidePoint;
+};
+
+export type RiderTripRealtime = {
+  _id: string;
+  requestId?: string;
+  riderId?: string;
+  driverId?: string;
+  vehicleId?: string;
+  pickup?: RideStop;
+  dropoff?: RideStop;
+  status?: string;
+  pricing?: {
+    currency?: string;
+    estimatedFare?: number;
+    finalFare?: number;
+  };
+  rideOption?: {
+    vehicleType?: string;
+    tier?: string;
+    size?: string;
+  };
+};
+
+export type RideDriverProgress = {
+  target?: string;
+  currentLocation?: {
+    point?: RidePoint;
+    updatedAt?: string | null;
+  } | null;
+  distanceMeters?: number | null;
+  distanceKm?: number | null;
+  etaMinutes?: number | null;
+  updatedAt?: string | null;
+};
+
+export type RideMatchedPayload = {
+  requestId: string;
+  matchedDriverId: string;
+  trip: RiderTripRealtime;
+  driver?: {
+    _id: string;
+    name: string;
+    profileImage?: string | null;
+    ratingAvg?: number;
+    ratingCount?: number;
+    tripsCount?: number;
+    phone?: string | null;
+  };
+  vehicle?: {
+    _id?: string;
+    brand?: string;
+    model?: string;
+    type?: string;
+    size?: string;
+    licensePlate?: string | null;
+  } | null;
+  fare?: {
+    currency?: string;
+    estimatedFare?: number;
+    finalFare?: number;
+  };
+  pickupProgress?: RideDriverProgress | null;
+  note?: {
+    pickupInstruction?: string;
+    otpInstruction?: string;
+    cancellationRule?: string;
+  };
+};
+
 type RideBookState = {
   step1: {
     pickup: RideLocation | null;
@@ -111,6 +188,10 @@ type RideBookState = {
     estimatedMinutes: number | null;
   };
   latestRideRequest: RideRequestItem | null;
+  activeTrip: RiderTripRealtime | null;
+  matchedDriver: RideMatchedPayload["driver"] | null;
+  matchedVehicle: RideMatchedPayload["vehicle"] | null;
+  driverProgress: RideDriverProgress | null;
 };
 
 const initialState: RideBookState = {
@@ -132,6 +213,10 @@ const initialState: RideBookState = {
     estimatedMinutes: null,
   },
   latestRideRequest: null,
+  activeTrip: null,
+  matchedDriver: null,
+  matchedVehicle: null,
+  driverProgress: null,
 };
 
 const rideBookSlice = createSlice({
@@ -181,6 +266,32 @@ const rideBookSlice = createSlice({
     ) => {
       state.latestRideRequest = action.payload;
     },
+    setRideMatchedData: (state, action: PayloadAction<RideMatchedPayload | null>) => {
+      const payload = action.payload;
+
+      if (!payload) {
+        state.activeTrip = null;
+        state.matchedDriver = null;
+        state.matchedVehicle = null;
+        state.driverProgress = null;
+        return;
+      }
+
+      state.activeTrip = payload.trip;
+      state.matchedDriver = payload.driver ?? null;
+      state.matchedVehicle = payload.vehicle ?? null;
+      state.driverProgress = payload.pickupProgress ?? null;
+
+      if (state.latestRideRequest) {
+        state.latestRideRequest.status = "matched";
+      }
+    },
+    setRideDriverProgress: (
+      state,
+      action: PayloadAction<RideDriverProgress | null>,
+    ) => {
+      state.driverProgress = action.payload;
+    },
     resetRideBook: (state) => {
       state.step1 = {
         pickup: null,
@@ -200,6 +311,10 @@ const rideBookSlice = createSlice({
         estimatedMinutes: null,
       };
       state.latestRideRequest = null;
+      state.activeTrip = null;
+      state.matchedDriver = null;
+      state.matchedVehicle = null;
+      state.driverProgress = null;
     },
   },
 });
@@ -212,6 +327,8 @@ export const {
   setRidePayment,
   setRideEstimate,
   setLatestRideRequest,
+  setRideMatchedData,
+  setRideDriverProgress,
   resetRideBook,
 } = rideBookSlice.actions;
 
