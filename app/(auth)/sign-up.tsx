@@ -44,7 +44,6 @@ export default function SignUpScreen() {
       const registerResponse = await register({
         ...values,
       }).unwrap();
-      console.log(registerResponse?.data);
 
       const user = registerResponse?.data?.user;
       if (user) {

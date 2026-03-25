@@ -2,11 +2,20 @@ import { MarkerCircle } from "@/components/AnimatedMarker";
 import FareModal from "@/components/FareModal";
 import { MarkerTriangle } from "@/components/Markers";
 import RoadPolyline from "@/components/RoadPolyline";
+import {
+  DestinationMetricsPayload,
+  useChangeRideRequestDestinationMutation,
+  useChangeTripDestinationMutation,
+  useCheckRideRequestFareMutation,
+  useCheckTripFareMutation,
+} from "@/redux/api/rideBookApi";
+import { useAppSelector } from "@/redux/hooks";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   FlatList,
   Keyboard,
   StyleSheet,
@@ -20,58 +29,239 @@ import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_MAP_API_KEY;
 
-/* ---------- Mock Route (Like Screenshot) ---------- */
-const routeCoordinates = [
-  { latitude: 32.7801, longitude: -96.8055 },
-  { latitude: 32.7815, longitude: -96.8055 },
-  { latitude: 32.7825, longitude: -96.7985 },
-  { latitude: 32.7845, longitude: -96.801 },
-  { latitude: 32.7858, longitude: -96.7975 },
-];
+type Coordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+type DropoffLocation = {
+  address: string;
+  lat: number;
+  lng: number;
+};
+
+type GooglePrediction = {
+  place_id: string;
+  description: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
+};
+
+const DEFAULT_COORDINATE: Coordinate = {
+  latitude: 23.7806,
+  longitude: 90.4071,
+};
+
+const pointToCoordinate = (
+  coordinates?: [number, number],
+): Coordinate | null => {
+  if (
+    !Array.isArray(coordinates) ||
+    coordinates.length < 2 ||
+    typeof coordinates[0] !== "number" ||
+    typeof coordinates[1] !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    latitude: coordinates[1],
+    longitude: coordinates[0],
+  };
+};
+
+const haversineMiles = (from: Coordinate, to: Coordinate) => {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadiusMiles = 3958.8;
+
+  const latDiff = toRad(to.latitude - from.latitude);
+  const lngDiff = toRad(to.longitude - from.longitude);
+
+  const a =
+    Math.sin(latDiff / 2) ** 2 +
+    Math.cos(toRad(from.latitude)) *
+      Math.cos(toRad(to.latitude)) *
+      Math.sin(lngDiff / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMiles * c;
+};
+
+const fallbackEstimate = (pickup: Coordinate, dropoff: Coordinate) => {
+  const estimatedMiles = Number(haversineMiles(pickup, dropoff).toFixed(1));
+  const estimatedMinutes = Math.max(1, Math.round((estimatedMiles / 22) * 60));
+  return { estimatedMiles, estimatedMinutes };
+};
+
+const parseFareAmount = (fareSnapshot: any) => {
+  const parsed = Number(
+    fareSnapshot?.estimatedFare ??
+      fareSnapshot?.finalFare ??
+      fareSnapshot?.totalFare,
+  );
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
 
 export default function MapSelectionScreen() {
   const mapRef = useRef<MapView>(null);
-
-  const [pickUpText, setPickUpText] = useState("Brac University Building 5");
-  const [dropOffText, setDropOffText] = useState("Hazrat Shahjalal Airport");
-
-  const [userLocation, setUserLocation] = useState(routeCoordinates[0]);
-  const [heading, setHeading] = useState(0);
-
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [currentInput, setCurrentInput] = useState<"pickup" | "dropoff">(
-    "dropoff",
-  );
-
-  const [modalVisible, setModalVisible] = useState(false);
-
   const [searchTimer, setSearchTimer] = useState<ReturnType<
     typeof setTimeout
   > | null>(null);
 
-  /* ---------- Location Tracking ---------- */
+  const latestRideRequest = useAppSelector(
+    (state) => state.rideBook.latestRideRequest,
+  );
+  const activeTrip = useAppSelector((state) => state.rideBook.activeTrip);
+
+  const pickupFromState = useMemo(() => {
+    const activePickupCoordinate = pointToCoordinate(
+      activeTrip?.pickup?.point?.coordinates as [number, number] | undefined,
+    );
+    if (activePickupCoordinate && activeTrip?.pickup?.address) {
+      return {
+        address: activeTrip.pickup.address,
+        lat: activePickupCoordinate.latitude,
+        lng: activePickupCoordinate.longitude,
+      };
+    }
+
+    const requestPickupCoordinate = pointToCoordinate(
+      latestRideRequest?.pickup?.point?.coordinates,
+    );
+    if (requestPickupCoordinate && latestRideRequest?.pickup?.address) {
+      return {
+        address: latestRideRequest.pickup.address,
+        lat: requestPickupCoordinate.latitude,
+        lng: requestPickupCoordinate.longitude,
+      };
+    }
+
+    return null;
+  }, [
+    activeTrip?.pickup?.address,
+    activeTrip?.pickup?.point?.coordinates,
+    latestRideRequest?.pickup?.address,
+    latestRideRequest?.pickup?.point?.coordinates,
+  ]);
+
+  const initialDropoff = useMemo(() => {
+    const activeDropoffCoordinate = pointToCoordinate(
+      activeTrip?.dropoff?.point?.coordinates as [number, number] | undefined,
+    );
+    if (activeDropoffCoordinate && activeTrip?.dropoff?.address) {
+      return {
+        address: activeTrip.dropoff.address,
+        lat: activeDropoffCoordinate.latitude,
+        lng: activeDropoffCoordinate.longitude,
+      } as DropoffLocation;
+    }
+
+    const requestDropoffCoordinate = pointToCoordinate(
+      latestRideRequest?.dropoff?.point?.coordinates,
+    );
+    if (requestDropoffCoordinate && latestRideRequest?.dropoff?.address) {
+      return {
+        address: latestRideRequest.dropoff.address,
+        lat: requestDropoffCoordinate.latitude,
+        lng: requestDropoffCoordinate.longitude,
+      } as DropoffLocation;
+    }
+
+    return null;
+  }, [
+    activeTrip?.dropoff?.address,
+    activeTrip?.dropoff?.point?.coordinates,
+    latestRideRequest?.dropoff?.address,
+    latestRideRequest?.dropoff?.point?.coordinates,
+  ]);
+
+  const pickupText = pickupFromState?.address ?? "Pickup location";
+  const [dropOffText, setDropOffText] = useState(initialDropoff?.address ?? "");
+  const [selectedDropoff, setSelectedDropoff] = useState<DropoffLocation | null>(
+    initialDropoff,
+  );
+  const hasEditedDropoffRef = useRef(false);
+  const [userLocation, setUserLocation] = useState<Coordinate>(
+    pickupFromState
+      ? { latitude: pickupFromState.lat, longitude: pickupFromState.lng }
+      : DEFAULT_COORDINATE,
+  );
+  const [heading, setHeading] = useState(0);
+  const [searchResults, setSearchResults] = useState<GooglePrediction[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [checkedFare, setCheckedFare] = useState(0);
+  const [pendingBody, setPendingBody] = useState<DestinationMetricsPayload | null>(
+    null,
+  );
+
+  const [checkRideRequestFare, { isLoading: isCheckingRideRequestFare }] =
+    useCheckRideRequestFareMutation();
+  const [checkTripFare, { isLoading: isCheckingTripFare }] =
+    useCheckTripFareMutation();
+  const [changeRideRequestDestination, { isLoading: isChangingRideRequest }] =
+    useChangeRideRequestDestinationMutation();
+  const [changeTripDestination, { isLoading: isChangingTrip }] =
+    useChangeTripDestinationMutation();
+
+  const isCheckingFare = isCheckingRideRequestFare || isCheckingTripFare;
+  const isChangingDestination = isChangingRideRequest || isChangingTrip;
+
+  const pickupCoordinate = pickupFromState
+    ? { latitude: pickupFromState.lat, longitude: pickupFromState.lng }
+    : null;
+  const dropoffCoordinate = selectedDropoff
+    ? { latitude: selectedDropoff.lat, longitude: selectedDropoff.lng }
+    : null;
+  const mapCenter = dropoffCoordinate ?? pickupCoordinate ?? userLocation;
+
+  const routeCoordinates = useMemo(() => {
+    if (pickupCoordinate && dropoffCoordinate) {
+      return [pickupCoordinate, dropoffCoordinate];
+    }
+
+    if (dropoffCoordinate) {
+      return [userLocation, dropoffCoordinate];
+    }
+
+    return [];
+  }, [dropoffCoordinate, pickupCoordinate, userLocation]);
+
+  const getApiErrorMessage = useCallback(
+    (error: any, fallbackMessage: string) =>
+      error?.data?.error?.message ?? error?.data?.message ?? fallbackMessage,
+    [],
+  );
+
+  useEffect(() => {
+    if (!initialDropoff || hasEditedDropoffRef.current) {
+      return;
+    }
+
+    setDropOffText(initialDropoff.address);
+    setSelectedDropoff(initialDropoff);
+  }, [initialDropoff]);
+
   useFocusEffect(
     useCallback(() => {
       let subscription: Location.LocationSubscription | null = null;
 
       const startWatching = async () => {
         const { status } = await Location.requestForegroundPermissionsAsync();
-
         if (status !== "granted") return;
 
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
             timeInterval: 2000,
-            distanceInterval: 1,
+            distanceInterval: 3,
           },
           (loc) => {
-            const newLocation = {
-              latitude: routeCoordinates[0].latitude,
-              longitude: routeCoordinates[0].longitude,
-            };
-
-            setUserLocation(newLocation);
+            setUserLocation({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+            });
             setHeading(loc.coords.heading || 0);
           },
         );
@@ -79,26 +269,19 @@ export default function MapSelectionScreen() {
 
       startWatching();
 
-      // This runs when screen loses focus
       return () => {
         subscription?.remove();
         subscription = null;
       };
-    }, [routeCoordinates]),
+    }, []),
   );
 
-  /* ---------- Debounced Search ---------- */
-  const debouncedSearch = (text: string) => {
-    if (searchTimer) clearTimeout(searchTimer);
+  const performSearch = useCallback(async (text: string) => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      setSearchResults([]);
+      return;
+    }
 
-    const timer = setTimeout(() => {
-      performSearch(text);
-    }, 400);
-
-    setSearchTimer(timer);
-  };
-
-  const performSearch = async (text: string) => {
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
@@ -106,57 +289,290 @@ export default function MapSelectionScreen() {
         )}&key=${GOOGLE_MAPS_API_KEY}&types=geocode`,
       );
       const json = await response.json();
-      setSearchResults(json?.predictions || []);
+      setSearchResults((json?.predictions || []) as GooglePrediction[]);
     } catch (error) {
       console.log(error);
       setSearchResults([]);
     }
-  };
+  }, []);
 
-  const handleLocationSelect = (item: any) => {
-    const fullDescription = item?.description || "";
+  const debouncedSearch = useCallback(
+    (text: string) => {
+      if (searchTimer) clearTimeout(searchTimer);
 
-    if (currentInput === "pickup") {
-      setPickUpText(fullDescription);
-    } else {
-      setDropOffText(fullDescription);
+      const timer = setTimeout(() => {
+        performSearch(text);
+      }, 400);
+
+      setSearchTimer(timer);
+    },
+    [performSearch, searchTimer],
+  );
+
+  const fetchPlaceDetails = useCallback(async (placeId: string) => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return null;
     }
 
-    setSearchResults([]);
-    Keyboard.dismiss();
-
-    // Optional: Animate map (center on mock route end)
-    mapRef.current?.animateToRegion(
-      {
-        latitude: routeCoordinates[4].latitude,
-        longitude: routeCoordinates[4].longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      },
-      600,
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
+        placeId,
+      )}&fields=formatted_address,geometry&key=${GOOGLE_MAPS_API_KEY}`,
     );
-  };
+    const json = await response.json();
+    const location = json?.result?.geometry?.location;
+    const formattedAddress = json?.result?.formatted_address;
+
+    if (
+      !location ||
+      typeof location.lat !== "number" ||
+      typeof location.lng !== "number"
+    ) {
+      return null;
+    }
+
+    return {
+      address: formattedAddress || "Selected location",
+      lat: location.lat,
+      lng: location.lng,
+    } as DropoffLocation;
+  }, []);
+
+  const handleLocationSelect = useCallback(
+    async (item: GooglePrediction) => {
+      try {
+        const detailedLocation = await fetchPlaceDetails(item.place_id);
+
+        if (!detailedLocation) {
+          Alert.alert(
+            "Location unavailable",
+            "Could not load this place. Please try another location.",
+          );
+          return;
+        }
+
+        setDropOffText(detailedLocation.address);
+        setSelectedDropoff(detailedLocation);
+        hasEditedDropoffRef.current = true;
+        setSearchResults([]);
+        Keyboard.dismiss();
+
+        mapRef.current?.animateToRegion(
+          {
+            latitude: detailedLocation.lat,
+            longitude: detailedLocation.lng,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          },
+          600,
+        );
+      } catch (error) {
+        Alert.alert("Search failed", "Could not load place details right now.");
+      }
+    },
+    [fetchPlaceDetails],
+  );
+
+  const resolveDirectionsEstimate = useCallback(
+    async (pickup: DropoffLocation, dropoff: DropoffLocation) => {
+      if (!GOOGLE_MAPS_API_KEY) {
+        return fallbackEstimate(
+          { latitude: pickup.lat, longitude: pickup.lng },
+          { latitude: dropoff.lat, longitude: dropoff.lng },
+        );
+      }
+
+      try {
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${pickup.lat},${pickup.lng}&destination=${dropoff.lat},${dropoff.lng}&key=${GOOGLE_MAPS_API_KEY}`,
+        );
+        const data = await response.json();
+        const leg = data?.routes?.[0]?.legs?.[0];
+        const distanceMeters = Number(leg?.distance?.value);
+        const durationSeconds = Number(leg?.duration?.value);
+
+        if (
+          !Number.isFinite(distanceMeters) ||
+          !Number.isFinite(durationSeconds)
+        ) {
+          return fallbackEstimate(
+            { latitude: pickup.lat, longitude: pickup.lng },
+            { latitude: dropoff.lat, longitude: dropoff.lng },
+          );
+        }
+
+        const estimatedMiles = Number((distanceMeters * 0.000621371).toFixed(1));
+        const estimatedMinutes = Math.max(1, Math.round(durationSeconds / 60));
+        return { estimatedMiles, estimatedMinutes };
+      } catch (error) {
+        return fallbackEstimate(
+          { latitude: pickup.lat, longitude: pickup.lng },
+          { latitude: dropoff.lat, longitude: dropoff.lng },
+        );
+      }
+    },
+    [],
+  );
+
+  const handleCheckFare = useCallback(async () => {
+    if (!pickupFromState) {
+      Alert.alert(
+        "Missing pickup",
+        "Pickup location is unavailable. Please try again.",
+      );
+      return;
+    }
+
+    if (!selectedDropoff) {
+      Alert.alert(
+        "Missing dropoff",
+        "Please select a dropoff location from search results.",
+      );
+      return;
+    }
+
+    const tripId = activeTrip?._id ?? "";
+    const requestId = latestRideRequest?._id ?? "";
+
+    if (!tripId && !requestId) {
+      Alert.alert(
+        "No active ride",
+        "There is no active request or trip to update.",
+      );
+      return;
+    }
+
+    try {
+      const estimate = await resolveDirectionsEstimate(pickupFromState, selectedDropoff);
+      const body: DestinationMetricsPayload = {
+        dropoff: {
+          address: selectedDropoff.address,
+          lng: selectedDropoff.lng,
+          lat: selectedDropoff.lat,
+        },
+        estimatedMiles: estimate.estimatedMiles,
+        estimatedMinutes: estimate.estimatedMinutes,
+      };
+
+      if (tripId) {
+        const response = await checkTripFare({
+          tripId,
+          body,
+        }).unwrap();
+        const checkedFareAmount = parseFareAmount(response?.data?.checkedFare);
+        const fallbackFareAmount = parseFareAmount(response?.data?.currentFare);
+        const fareAmount = Number.isFinite(checkedFareAmount)
+          ? checkedFareAmount
+          : fallbackFareAmount;
+        if (!Number.isFinite(fareAmount)) {
+          Alert.alert("Fare unavailable", "Could not calculate updated fare.");
+          return;
+        }
+
+        setPendingBody(body);
+        setCheckedFare(fareAmount);
+        setModalVisible(true);
+        return;
+      }
+
+      const response = await checkRideRequestFare({
+        requestId,
+        body,
+      }).unwrap();
+      const checkedFareAmount = parseFareAmount(response?.data?.checkedQuote);
+      const fallbackFareAmount = parseFareAmount(response?.data?.currentQuote);
+      const fareAmount = Number.isFinite(checkedFareAmount)
+        ? checkedFareAmount
+        : fallbackFareAmount;
+      if (!Number.isFinite(fareAmount)) {
+        Alert.alert("Fare unavailable", "Could not calculate updated fare.");
+        return;
+      }
+
+      setPendingBody(body);
+      setCheckedFare(fareAmount);
+      setModalVisible(true);
+    } catch (error: any) {
+      Alert.alert(
+        "Check fare failed",
+        getApiErrorMessage(error, "Could not check fare right now."),
+      );
+    }
+  }, [
+    activeTrip?._id,
+    checkRideRequestFare,
+    checkTripFare,
+    getApiErrorMessage,
+    latestRideRequest?._id,
+    pickupFromState,
+    resolveDirectionsEstimate,
+    selectedDropoff,
+  ]);
+
+  const handleConfirmChange = useCallback(async () => {
+    if (isChangingDestination || !pendingBody) {
+      return;
+    }
+
+    const tripId = activeTrip?._id ?? "";
+    const requestId = latestRideRequest?._id ?? "";
+
+    try {
+      if (tripId) {
+        await changeTripDestination({
+          tripId,
+          body: pendingBody,
+        }).unwrap();
+      } else if (requestId) {
+        await changeRideRequestDestination({
+          requestId,
+          body: pendingBody,
+        }).unwrap();
+      } else {
+        Alert.alert(
+          "No active ride",
+          "There is no active request or trip to update.",
+        );
+        return;
+      }
+
+      setModalVisible(false);
+      Alert.alert("Destination updated", "Dropoff location changed successfully.");
+      router.back();
+    } catch (error: any) {
+      Alert.alert(
+        "Update failed",
+        getApiErrorMessage(error, "Could not update dropoff location."),
+      );
+    }
+  }, [
+    activeTrip?._id,
+    changeRideRequestDestination,
+    changeTripDestination,
+    getApiErrorMessage,
+    isChangingDestination,
+    latestRideRequest?._id,
+    pendingBody,
+  ]);
 
   return (
     <View style={styles.container}>
       <FareModal
         visible={modalVisible}
-        price={10.0}
+        price={checkedFare}
         onCancel={() => setModalVisible(false)}
-        onConfirm={() => {
-          console.log("Fare accepted");
-          setModalVisible(false);
-        }}
+        onConfirm={handleConfirmChange}
+        isLoading={isChangingDestination}
       />
-      {/* ---------- MAP ---------- */}
+
       <MapView
         ref={mapRef}
         style={styles.map}
         initialRegion={{
-          latitude: 32.7767,
-          longitude: -96.797,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+          latitude: mapCenter.latitude,
+          longitude: mapCenter.longitude,
+          latitudeDelta: 0.03,
+          longitudeDelta: 0.03,
         }}
         userInterfaceStyle="light"
       >
@@ -167,23 +583,25 @@ export default function MapSelectionScreen() {
           rotation={heading}
         />
 
-        <Marker coordinate={routeCoordinates[4]} anchor={{ x: 0.5, y: 0.5 }}>
-          <MarkerTriangle />
-        </Marker>
+        {dropoffCoordinate && (
+          <Marker coordinate={dropoffCoordinate} anchor={{ x: 0.5, y: 0.5 }}>
+            <MarkerTriangle />
+          </Marker>
+        )}
 
-        <RoadPolyline
-          coordinates={routeCoordinates}
-          strokeColor="#7B61FF"
-          strokeWidth={4}
-        />
+        {routeCoordinates.length > 1 && (
+          <RoadPolyline
+            coordinates={routeCoordinates}
+            strokeColor="#7B61FF"
+            strokeWidth={4}
+          />
+        )}
       </MapView>
 
-      {/* ---------- HEADER ---------- */}
       <View style={styles.searchHeader}>
         <View style={styles.row}>
           <View style={{ flex: 1, marginLeft: scale(10) }}>
             <View style={styles.inputCard}>
-              {/* Pickup */}
               <View style={styles.inputRow}>
                 <TouchableOpacity
                   style={styles.backButton}
@@ -191,23 +609,18 @@ export default function MapSelectionScreen() {
                 >
                   <Ionicons name="chevron-back" size={24} color="black" />
                 </TouchableOpacity>
-                <View style={styles.inputBox}>
+                <View style={[styles.inputBox, styles.inputBoxDisabled]}>
                   <Ionicons name="radio-button-on" size={26} color="#7B61FF" />
                   <TextInput
                     placeholder="Pickup location"
                     style={styles.input}
-                    value={pickUpText}
-                    onChangeText={(text) => {
-                      setCurrentInput("pickup");
-                      setPickUpText(text);
-                      if (text.length > 1) debouncedSearch(text);
-                      else setSearchResults([]);
-                    }}
+                    value={pickupText}
+                    editable={false}
+                    selectTextOnFocus={false}
                   />
                 </View>
               </View>
 
-              {/* Dropoff */}
               <View style={styles.inputRow}>
                 <View style={styles.inputBox}>
                   <Ionicons name="location-sharp" size={26} color="#7B61FF" />
@@ -216,8 +629,9 @@ export default function MapSelectionScreen() {
                     style={styles.input}
                     value={dropOffText}
                     onChangeText={(text) => {
-                      setCurrentInput("dropoff");
+                      hasEditedDropoffRef.current = true;
                       setDropOffText(text);
+                      setSelectedDropoff(null);
                       if (text.length > 1) debouncedSearch(text);
                       else setSearchResults([]);
                     }}
@@ -226,30 +640,20 @@ export default function MapSelectionScreen() {
               </View>
             </View>
 
-            {/* ---------- SEARCH RESULTS ---------- */}
             {searchResults.length > 0 && (
               <View style={styles.listWrapper}>
                 <FlatList
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                   data={searchResults}
-                  keyExtractor={(item: any) => item.place_id}
+                  keyExtractor={(item) => item.place_id}
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       style={styles.locationItem}
                       onPress={() => handleLocationSelect(item)}
                     >
-                      <Ionicons
-                        name="location-outline"
-                        size={20}
-                        color="#333"
-                      />
-                      <View
-                        style={{
-                          marginLeft: 10,
-                          flex: 1,
-                        }}
-                      >
+                      <Ionicons name="location-outline" size={20} color="#333" />
+                      <View style={{ marginLeft: 10, flex: 1 }}>
                         <Text style={styles.locationName} numberOfLines={1}>
                           {item?.structured_formatting?.main_text}
                         </Text>
@@ -266,24 +670,24 @@ export default function MapSelectionScreen() {
         </View>
       </View>
 
-      {/* ---------- BOTTOM ACTIONS ---------- */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.secondaryBtn}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={() => router.back()}>
           <Text style={styles.secondaryBtnText}>Cancel</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={() => setModalVisible(true)}
+          style={[styles.primaryBtn, isCheckingFare ? styles.buttonDisabled : null]}
+          onPress={handleCheckFare}
+          disabled={isCheckingFare}
         >
-          <Text style={styles.primaryBtnText}>Check fare</Text>
+          <Text style={styles.primaryBtnText}>
+            {isCheckingFare ? "Checking..." : "Check fare"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
-/* ===================== STYLES ===================== */
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -352,9 +756,13 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     flex: 1,
   },
+  inputBoxDisabled: {
+    backgroundColor: "#F2F4F7",
+  },
 
   input: {
     fontSize: moderateScale(14),
+    flex: 1,
   },
 
   listWrapper: {
@@ -395,6 +803,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.65,
   },
 
   primaryBtnText: {

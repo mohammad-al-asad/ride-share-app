@@ -90,7 +90,6 @@ const VerifyOtpScreen: React.FC = () => {
       email: emailValue,
       otp,
     }).unwrap();
-    console.log("Verify Reset OTP response:", response?.data);
     const resetToken = response?.data?.resetToken;
     if (resetToken) {
       router.replace({

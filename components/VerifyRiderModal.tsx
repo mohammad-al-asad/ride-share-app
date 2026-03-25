@@ -1,6 +1,6 @@
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text } from "react-native";
 import { OtpInput } from "react-native-otp-entry";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
@@ -9,14 +9,22 @@ interface Props {
   isVisible: boolean;
   onClose: () => void;
   onVerify: (otp: string) => void;
+  isLoading?: boolean;
 }
 
 const VerifyRiderModal: React.FC<Props> = ({
   isVisible,
   onClose,
   onVerify,
+  isLoading = false,
 }) => {
   const [otp, setOtp] = useState("");
+
+  useEffect(() => {
+    if (!isVisible) {
+      setOtp("");
+    }
+  }, [isVisible]);
 
   return (
     <Modal
@@ -43,7 +51,13 @@ const VerifyRiderModal: React.FC<Props> = ({
             }}
           />
 
-          <CustomButton type="main" text="GO" onClick={() => onVerify(otp)} />
+          <CustomButton
+            type="main"
+            text="GO"
+            onClick={() => onVerify(otp)}
+            isDisable={otp.length !== 4}
+            isLoading={isLoading}
+          />
         </Pressable>
       </Pressable>
     </Modal>

@@ -357,6 +357,70 @@ const rideBookSlice = createSlice({
           state.matchedVehicle = null;
           state.driverProgress = null;
         },
+      )
+      .addMatcher(
+        rideBookApi.endpoints.changeRideRequestDestination.matchFulfilled,
+        (state, action) => {
+          const rideRequest = action.payload.data.rideRequest;
+          const dropoffCoordinates = rideRequest?.dropoff?.point?.coordinates;
+          const newQuote = action.payload.data.newQuote;
+
+          state.latestRideRequest = rideRequest ?? null;
+
+          if (
+            Array.isArray(dropoffCoordinates) &&
+            dropoffCoordinates.length >= 2 &&
+            typeof dropoffCoordinates[0] === "number" &&
+            typeof dropoffCoordinates[1] === "number"
+          ) {
+            state.step1.dropoff = {
+              address: rideRequest.dropoff.address,
+              lat: dropoffCoordinates[1],
+              lng: dropoffCoordinates[0],
+            };
+          }
+
+          if (newQuote) {
+            if (typeof newQuote.estimatedMiles === "number") {
+              state.estimate.estimatedMiles = newQuote.estimatedMiles;
+            }
+            if (typeof newQuote.estimatedMinutes === "number") {
+              state.estimate.estimatedMinutes = newQuote.estimatedMinutes;
+            }
+          }
+        },
+      )
+      .addMatcher(
+        rideBookApi.endpoints.changeTripDestination.matchFulfilled,
+        (state, action) => {
+          const trip = action.payload.data.trip;
+          const dropoffCoordinates = trip?.dropoff?.point?.coordinates;
+          const newFare = action.payload.data.newFare;
+
+          state.activeTrip = trip ?? null;
+
+          if (
+            Array.isArray(dropoffCoordinates) &&
+            dropoffCoordinates.length >= 2 &&
+            typeof dropoffCoordinates[0] === "number" &&
+            typeof dropoffCoordinates[1] === "number"
+          ) {
+            state.step1.dropoff = {
+              address: trip.dropoff?.address ?? "Updated dropoff",
+              lat: dropoffCoordinates[1],
+              lng: dropoffCoordinates[0],
+            };
+          }
+
+          if (newFare) {
+            if (typeof newFare.estimatedMiles === "number") {
+              state.estimate.estimatedMiles = newFare.estimatedMiles;
+            }
+            if (typeof newFare.estimatedMinutes === "number") {
+              state.estimate.estimatedMinutes = newFare.estimatedMinutes;
+            }
+          }
+        },
       );
   },
 });

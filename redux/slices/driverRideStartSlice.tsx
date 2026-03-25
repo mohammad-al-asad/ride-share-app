@@ -19,6 +19,7 @@ type DriverRideStartState = {
   activeVehicleId: string | null;
   location: DriverRideLocation | null;
   activeTrip: DriverAcceptedTrip | null;
+  lastCompletedTrip: DriverAcceptedTrip | null;
   activeRideRequest: DriverHomeData["activeRideRequest"];
 };
 
@@ -34,6 +35,7 @@ const initialState: DriverRideStartState = {
   activeVehicleId: null,
   location: null,
   activeTrip: null,
+  lastCompletedTrip: null,
   activeRideRequest: null,
 };
 
@@ -93,6 +95,7 @@ const driverRideStartSlice = createSlice({
         activeVehicleId,
         location,
         activeTrip,
+        lastCompletedTrip,
         activeRideRequest,
       } = action.payload;
 
@@ -128,6 +131,9 @@ const driverRideStartSlice = createSlice({
       }
       if (activeTrip !== undefined) {
         state.activeTrip = activeTrip ?? null;
+      }
+      if (lastCompletedTrip !== undefined) {
+        state.lastCompletedTrip = lastCompletedTrip ?? null;
       }
       if (activeRideRequest !== undefined) {
         state.activeRideRequest = activeRideRequest ?? null;
@@ -167,6 +173,7 @@ const driverRideStartSlice = createSlice({
           state.message = action.payload.data.message;
           state.isBusy = true;
           state.activeTrip = action.payload.data.trip;
+          state.lastCompletedTrip = null;
           state.activeRideRequest = null;
         },
       )
@@ -176,6 +183,31 @@ const driverRideStartSlice = createSlice({
           state.message = action.payload.data.message;
           state.isBusy = false;
           state.activeTrip = null;
+        },
+      )
+      .addMatcher(
+        driverRideStartApi.endpoints.arrivedAtPickup.matchFulfilled,
+        (state, action) => {
+          state.message = action.payload.data.message;
+          state.isBusy = true;
+          state.activeTrip = action.payload.data.trip;
+        },
+      )
+      .addMatcher(
+        driverRideStartApi.endpoints.completeTrip.matchFulfilled,
+        (state, action) => {
+          state.message = action.payload.data.message;
+          state.isBusy = false;
+          state.lastCompletedTrip = action.payload.data.trip;
+          state.activeTrip = null;
+        },
+      )
+      .addMatcher(
+        driverRideStartApi.endpoints.verifyTripOtp.matchFulfilled,
+        (state, action) => {
+          state.message = action.payload.data.message;
+          state.isBusy = true;
+          state.activeTrip = action.payload.data.trip;
         },
       );
   },

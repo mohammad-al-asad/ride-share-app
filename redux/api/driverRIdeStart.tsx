@@ -144,6 +144,69 @@ export type CancelTripResponse = {
   data: CancelTripData;
 };
 
+export type VerifyTripOtpPayload = {
+  tripId: string;
+  otp: string;
+};
+
+export type CompleteTripPayload = {
+  tripId: string;
+};
+
+export type ArrivedAtPickupPayload = {
+  tripId: string;
+};
+
+export type ArrivedAtPickupData = {
+  message: string;
+  trip: DriverAcceptedTrip;
+};
+
+export type ArrivedAtPickupResponse = {
+  success: boolean;
+  message: string;
+  data: ArrivedAtPickupData;
+};
+
+export type VerifyTripOtpData = {
+  message: string;
+  trip: DriverAcceptedTrip;
+};
+
+export type VerifyTripOtpResponse = {
+  success: boolean;
+  message: string;
+  data: VerifyTripOtpData;
+};
+
+export type CompleteTripData = {
+  message: string;
+  trip: DriverAcceptedTrip;
+  paymentSummary?: {
+    totalFare?: number;
+    driverGets?: number;
+    platformGets?: number;
+    paymentStatus?: string;
+  };
+  autoCharge?: {
+    attempted?: boolean;
+    succeeded?: boolean;
+    status?: string;
+    failureMessage?: string;
+    paymentIntentId?: string | null;
+    paymentMethodId?: string | null;
+    stripeCustomerId?: string | null;
+    driverGets?: number;
+    platformGets?: number;
+  };
+};
+
+export type CompleteTripResponse = {
+  success: boolean;
+  message: string;
+  data: CompleteTripData;
+};
+
 export type DriverRiderProfile = {
   _id: string;
   name: string;
@@ -228,6 +291,28 @@ export const driverRideStartApi = baseApi.injectEndpoints({
         method: "PATCH",
       }),
     }),
+    arrivedAtPickup: builder.mutation<
+      ArrivedAtPickupResponse,
+      ArrivedAtPickupPayload
+    >({
+      query: ({ tripId }) => ({
+        url: `driverHome/trip/${tripId}/arrived-pickup`,
+        method: "PATCH",
+      }),
+    }),
+    verifyTripOtp: builder.mutation<VerifyTripOtpResponse, VerifyTripOtpPayload>({
+      query: ({ tripId, otp }) => ({
+        url: `driverHome/trip/${tripId}/verify-otp`,
+        method: "PATCH",
+        body: { otp },
+      }),
+    }),
+    completeTrip: builder.mutation<CompleteTripResponse, CompleteTripPayload>({
+      query: ({ tripId }) => ({
+        url: `driverHome/trip/${tripId}/complete`,
+        method: "PATCH",
+      }),
+    }),
     getTripRiderProfile: builder.query<DriverTripRiderProfileResponse, string>({
       query: (tripId) => ({
         url: `driverHome/trip/${tripId}/rider-profile`,
@@ -244,5 +329,8 @@ export const {
   useUpdateLocationMutation,
   useAcceptRideRequestMutation,
   useCancelTripMutation,
+  useArrivedAtPickupMutation,
+  useVerifyTripOtpMutation,
+  useCompleteTripMutation,
   useGetTripRiderProfileQuery,
 } = driverRideStartApi;

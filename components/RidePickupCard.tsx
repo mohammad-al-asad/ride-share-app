@@ -1,7 +1,10 @@
 import { colors } from "@/config/colors";
 import {
+  useArrivedAtPickupMutation,
   useCancelTripMutation,
+  useCompleteTripMutation,
   useGetTripRiderProfileQuery,
+  useVerifyTripOtpMutation,
 } from "@/redux/api/driverRIdeStart";
 import { useAppSelector } from "@/redux/hooks";
 import { RootState } from "@/redux/store";
@@ -16,6 +19,8 @@ import VerifyRiderModal from "./VerifyRiderModal";
 
 const PRE_CANCEL_COUNTDOWN_SECONDS = 90; // 1.5 minutes
 const CANCEL_WINDOW_SECONDS = 270; // 4.5 minutes
+const PICKUP_ARRIVAL_RADIUS_METERS = 30;
+const DROPOFF_ARRIVAL_RADIUS_METERS = 35;
 
 type CancelTimerPhase = "pre_cancel" | "cancel_window" | "ended";
 
@@ -71,6 +76,11 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
     skip: !tripId,
   });
   const [cancelTrip, { isLoading: isCancelingTrip }] = useCancelTripMutation();
+  const [arrivedAtPickup, { isLoading: isUpdatingArrival }] =
+    useArrivedAtPickupMutation();
+  const [verifyTripOtp, { isLoading: isVerifyingOtp }] =
+    useVerifyTripOtpMutation();
+  const [completeTrip, { isLoading: isCompletingTrip }] = useCompleteTripMutation();
   const tripCreatedAtMs = useMemo(() => {
     if (!activeTrip?.createdAt) {
       return Number.NaN;
@@ -121,6 +131,8 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
 
   const showCancelButton = timerPhase !== "pre_cancel";
   const centerTimerBadge = !showCancelButton;
+  const isOtpVerified =
+    activeTrip?.status === "otp_verified" || activeTrip?.status === "started";
   const pickupCoordinate = useMemo(() => {
     const coordinates = activeTrip?.pickup?.point?.coordinates;
     if (!Array.isArray(coordinates) || coordinates.length < 2) {
@@ -134,6 +146,19 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
 
     return pointToCoordinate([longitude, latitude]);
   }, [activeTrip?.pickup?.point?.coordinates]);
+  const dropoffCoordinate = useMemo(() => {
+    const coordinates = activeTrip?.dropoff?.point?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) {
+      return null;
+    }
+
+    const [longitude, latitude] = coordinates;
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return null;
+    }
+
+    return pointToCoordinate([longitude, latitude]);
+  }, [activeTrip?.dropoff?.point?.coordinates]);
 
   const riderSummary = useMemo(() => {
     const riderFromApi = riderProfileResponse?.data?.rider;
@@ -163,23 +188,60 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
 
   const statusLabel = useMemo(() => {
     const status = activeTrip?.status;
+    if (
+      status === "started" &&
+      currentLocation &&
+      dropoffCoordinate &&
+      getDistanceInMeters(currentLocation, dropoffCoordinate) <=
+        DROPOFF_ARRIVAL_RADIUS_METERS
+    ) {
+      return "Arrived at dropoff location";
+    }
     if (status === "driver_arrived") return "Driver arrived at pickup";
     if (status === "otp_verified") return "Rider verified";
     if (status === "started") return "Trip in progress";
     if (status === "completed") return "Trip completed";
     if (status === "cancelled") return "Trip cancelled";
     return "Picking up rider";
-  }, [activeTrip?.status]);
+  }, [activeTrip?.status, currentLocation, dropoffCoordinate]);
+
+  const pickupDistanceMeters = useMemo(() => {
+    if (!currentLocation || !pickupCoordinate) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    return getDistanceInMeters(currentLocation, pickupCoordinate);
+  }, [currentLocation, pickupCoordinate]);
+  const dropoffDistanceMeters = useMemo(() => {
+    if (!currentLocation || !dropoffCoordinate) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    return getDistanceInMeters(currentLocation, dropoffCoordinate);
+  }, [currentLocation, dropoffCoordinate]);
+  const isHeadingToDropoff = activeTrip?.status === "started";
 
   const distanceText = useMemo(() => {
-    if (currentLocation && pickupCoordinate) {
-      const meters = getDistanceInMeters(currentLocation, pickupCoordinate);
-      const miles = meters / 1609.344;
+    const distanceMeters = isHeadingToDropoff
+      ? dropoffDistanceMeters
+      : pickupDistanceMeters;
+    if (Number.isFinite(distanceMeters)) {
+      const miles = distanceMeters / 1609.344;
       return `${miles.toFixed(1)} mi`;
     }
 
     return "--";
-  }, [currentLocation, pickupCoordinate]);
+  }, [dropoffDistanceMeters, isHeadingToDropoff, pickupDistanceMeters]);
+
+  const isAwaitingPickupArrival = activeTrip?.status === "accepted";
+  const hasArrivedAtPickup =
+    isAwaitingPickupArrival &&
+    pickupDistanceMeters <= PICKUP_ARRIVAL_RADIUS_METERS;
+  const hasArrivedAtDropoff =
+    isHeadingToDropoff && dropoffDistanceMeters <= DROPOFF_ARRIVAL_RADIUS_METERS;
+  const canCompleteRide = Boolean(tripId) && hasArrivedAtDropoff;
+  const showActionTimer =
+    activeTrip?.status === "accepted" || activeTrip?.status === "driver_arrived";
 
   useEffect(() => {
     if (!tripId) {
@@ -191,6 +253,18 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
 
     return () => clearInterval(timerId);
   }, [tripId]);
+
+  useEffect(() => {
+    if (!tripId || !hasArrivedAtPickup || isUpdatingArrival) {
+      return;
+    }
+
+    arrivedAtPickup({ tripId })
+      .unwrap()
+      .catch(() => {
+        // Keep this silent; we'll retry on upcoming location updates.
+      });
+  }, [arrivedAtPickup, hasArrivedAtPickup, isUpdatingArrival, tripId]);
 
   const timerText = useMemo(() => {
     const minutes = Math.floor(remainingSeconds / 60);
@@ -219,6 +293,59 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
     }
   }, [cancelTrip, tripId]);
 
+  const handleVerifyOtp = useCallback(
+    async (otp: string) => {
+      const cleanOtp = otp.trim();
+
+      if (!tripId) {
+        return;
+      }
+
+      if (cleanOtp.length !== 4) {
+        Alert.alert("Invalid OTP", "Please enter the 4-digit OTP.");
+        return;
+      }
+
+      try {
+        await verifyTripOtp({
+          tripId,
+          otp: cleanOtp,
+        }).unwrap();
+        setIsModal(false);
+      } catch (error: any) {
+        Alert.alert(
+          "OTP verification failed",
+          getApiErrorMessage(error, "Could not verify rider OTP."),
+        );
+      }
+    },
+    [tripId, verifyTripOtp],
+  );
+  const handleCompleteRide = useCallback(async () => {
+    if (!tripId || !canCompleteRide || isCompletingTrip) {
+      return;
+    }
+
+    try {
+      const response = await completeTrip({ tripId }).unwrap();
+      const successMessage =
+        response?.data?.message ??
+        response?.message ??
+        "Ride has been completed successfully.";
+      Alert.alert("Ride completed", successMessage, [
+        {
+          text: "OK",
+          onPress: () => router.push("/(protected)/(driver)/(home)/ride-completed"),
+        },
+      ]);
+    } catch (error: any) {
+      Alert.alert(
+        "Complete ride failed",
+        getApiErrorMessage(error, "Could not complete this ride."),
+      );
+    }
+  }, [canCompleteRide, completeTrip, isCompletingTrip, tripId]);
+
   return (
     <View style={styles.container}>
       <ConfirmationModal
@@ -234,7 +361,8 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
       <VerifyRiderModal
         isVisible={isModal}
         onClose={() => setIsModal(false)}
-        onVerify={() => setIsModal(false)}
+        onVerify={handleVerifyOtp}
+        isLoading={isVerifyingOtp}
       />
       {/* Top Distance Indicator */}
       <View style={styles.headerInfo}>
@@ -247,24 +375,26 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
         <Text style={styles.subtext}>{statusLabel}</Text>
       </View>
 
-      <View style={styles.actionRow}>
-        <View
-          style={[
-            styles.timerBadge,
-            centerTimerBadge ? styles.timerBadgeCentered : styles.timerBadgeLeft,
-          ]}
-        >
-          <Text style={styles.timerText}>{timerText}</Text>
-        </View>
-        {showCancelButton && (
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setIsCancelModal(true)}
+      {showActionTimer && (
+        <View style={styles.actionRow}>
+          <View
+            style={[
+              styles.timerBadge,
+              centerTimerBadge ? styles.timerBadgeCentered : styles.timerBadgeLeft,
+            ]}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+            <Text style={styles.timerText}>{timerText}</Text>
+          </View>
+          {showCancelButton && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setIsCancelModal(true)}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
       {/* Main Card */}
       <View style={styles.card}>
         <View style={styles.topSection}>
@@ -282,19 +412,21 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
           </View>
 
           {/* Start Button */}
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={() => {
-              setIsModal(true);
-            }}
-          >
-            <Ionicons
-              name="shield-checkmark"
-              size={scale(20)}
-              color="#FFD700"
-            />
-            <Text style={styles.startText}>Start</Text>
-          </TouchableOpacity>
+          {!isOtpVerified && (
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => {
+                setIsModal(true);
+              }}
+            >
+              <Ionicons
+                name="shield-checkmark"
+                size={scale(20)}
+                color="#FFD700"
+              />
+              <Text style={styles.startText}>Start</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Action Buttons */}
@@ -320,6 +452,20 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
           </TouchableOpacity>
         </View>
       </View>
+      {canCompleteRide && (
+        <TouchableOpacity
+          style={[
+            styles.completeRideButton,
+            isCompletingTrip ? styles.completeRideButtonDisabled : null,
+          ]}
+          onPress={handleCompleteRide}
+          disabled={isCompletingTrip}
+        >
+          <Text style={styles.completeRideText}>
+            {isCompletingTrip ? "Completing..." : "Complete Ride"}
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -332,6 +478,7 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     alignItems: "center",
+    marginBottom: 15,
   },
   distanceRow: {
     flexDirection: "row",
@@ -402,6 +549,9 @@ const styles = StyleSheet.create({
     borderRadius: scale(15),
     gap: scale(8),
   },
+  startButtonDisabled: {
+    opacity: 0.7,
+  },
 
   startText: {
     color: "#FFD700",
@@ -470,6 +620,23 @@ const styles = StyleSheet.create({
     right: 0,
   },
   cancelText: { color: "white", fontWeight: "600" },
+  completeRideButton: {
+    width: "100%",
+    marginTop: verticalScale(12),
+    backgroundColor: colors.main,
+    borderRadius: scale(10),
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: verticalScale(12),
+  },
+  completeRideButtonDisabled: {
+    opacity: 0.7,
+  },
+  completeRideText: {
+    color: "white",
+    fontSize: moderateScale(14),
+    fontWeight: "600",
+  },
 });
 
 export default RiderPickupCard;

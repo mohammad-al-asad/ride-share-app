@@ -110,15 +110,21 @@ export default function HomeScreen() {
   const dropoffCoordinate = activeTrip
     ? pointToCoordinate(activeTrip.dropoff.point.coordinates)
     : null;
-  const tripCoordinates = [pickupCoordinate, dropoffCoordinate].filter(
-    isCoordinate,
-  );
+  const hasPickedUpRider =
+    activeTrip?.status === "otp_verified" ||
+    activeTrip?.status === "started" ||
+    activeTrip?.status === "completed";
+  const pickupTrackingCoordinate = hasPickedUpRider ? null : pickupCoordinate;
+  const tripCoordinates = [
+    hasPickedUpRider ? null : pickupCoordinate,
+    dropoffCoordinate,
+  ].filter(isCoordinate);
   const fallbackPolylineCoordinates =
     tripCoordinates.length > 0 ? [driverLocation, ...tripCoordinates] : [];
   const polylineCoordinates =
     routePolyline.length > 1 ? routePolyline : fallbackPolylineCoordinates;
   const initialRegionCenter =
-    pickupCoordinate ?? dropoffCoordinate ?? driverLocation;
+    pickupTrackingCoordinate ?? dropoffCoordinate ?? driverLocation;
 
   useEffect(() => {
     if (!authToken || !hasUser) {
@@ -272,12 +278,12 @@ export default function HomeScreen() {
               }
             }
 
-            if (pickupCoordinate) {
+            if (pickupTrackingCoordinate) {
               const distanceToPickup = getDistance(
                 nextLocation.latitude,
                 nextLocation.longitude,
-                pickupCoordinate.latitude,
-                pickupCoordinate.longitude,
+                pickupTrackingCoordinate.latitude,
+                pickupTrackingCoordinate.longitude,
               );
 
               setArrived(distanceToPickup < 30);
@@ -297,8 +303,8 @@ export default function HomeScreen() {
       };
     }, [
       isOnline,
-      pickupCoordinate?.latitude,
-      pickupCoordinate?.longitude,
+      pickupTrackingCoordinate?.latitude,
+      pickupTrackingCoordinate?.longitude,
       updateLocation,
     ]),
   );
@@ -363,8 +369,8 @@ export default function HomeScreen() {
           </Marker>
         )}
 
-        {pickupCoordinate && (
-          <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={pickupCoordinate}>
+        {pickupTrackingCoordinate && (
+          <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={pickupTrackingCoordinate}>
             <MarkerUser />
           </Marker>
         )}
@@ -453,7 +459,7 @@ export default function HomeScreen() {
           ref={bottomSheetRef}
           index={1}
           style={styles.bottomSheet}
-          snapPoints={[height * 0.06, height * 0.43]}
+          snapPoints={[height * 0.06, height * 0.5]}
           enableDynamicSizing={false}
           activeOffsetY={[0, 1]}
           enablePanDownToClose={false}

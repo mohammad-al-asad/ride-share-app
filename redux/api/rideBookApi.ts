@@ -170,6 +170,92 @@ type CancelRideRequestResponse = {
   };
 };
 
+export type DestinationDropoffPayload = {
+  address: string;
+  lng: number;
+  lat: number;
+};
+
+export type DestinationMetricsPayload = {
+  dropoff: DestinationDropoffPayload;
+  estimatedMiles: number;
+  estimatedMinutes: number;
+};
+
+type RideQuoteSnapshot = {
+  currency?: string;
+  estimatedMiles?: number;
+  estimatedMinutes?: number;
+  baseFare?: number;
+  estimatedFare?: number;
+  finalFare?: number;
+  totalFare?: number;
+  pricePerMile?: number;
+  pricePerMinute?: number;
+  driverSharePercent?: number;
+};
+
+type CheckRideRequestFarePayload = {
+  requestId: string;
+  body: DestinationMetricsPayload;
+};
+
+type CheckRideRequestFareResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    requestId: string;
+    currentQuote?: RideQuoteSnapshot;
+    checkedQuote?: RideQuoteSnapshot;
+  };
+};
+
+type CheckTripFarePayload = {
+  tripId: string;
+  body: DestinationMetricsPayload;
+};
+
+type CheckTripFareResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    tripId: string;
+    currentFare?: RideQuoteSnapshot;
+    checkedFare?: RideQuoteSnapshot;
+  };
+};
+
+type ChangeRideRequestDestinationPayload = {
+  requestId: string;
+  body: DestinationMetricsPayload;
+};
+
+type ChangeRideRequestDestinationResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    message: string;
+    rideRequest: RideRequestItem;
+    newQuote?: RideQuoteSnapshot;
+    nearbyDrivers?: unknown[];
+  };
+};
+
+type ChangeTripDestinationPayload = {
+  tripId: string;
+  body: DestinationMetricsPayload;
+};
+
+type ChangeTripDestinationResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    message: string;
+    trip: RiderTripRealtime;
+    newFare?: RideQuoteSnapshot;
+  };
+};
+
 export const rideBookApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getFareConfig: builder.query<FareConfigResponse, void>({
@@ -240,6 +326,43 @@ export const rideBookApi = baseApi.injectEndpoints({
         method: "PATCH",
       }),
     }),
+    checkRideRequestFare: builder.mutation<
+      CheckRideRequestFareResponse,
+      CheckRideRequestFarePayload
+    >({
+      query: ({ requestId, body }) => ({
+        url: `riderGetRide/ride-request/${requestId}/check-fare`,
+        method: "POST",
+        body,
+      }),
+    }),
+    checkTripFare: builder.mutation<CheckTripFareResponse, CheckTripFarePayload>({
+      query: ({ tripId, body }) => ({
+        url: `riderGetRide/trip/${tripId}/check-fare`,
+        method: "POST",
+        body,
+      }),
+    }),
+    changeRideRequestDestination: builder.mutation<
+      ChangeRideRequestDestinationResponse,
+      ChangeRideRequestDestinationPayload
+    >({
+      query: ({ requestId, body }) => ({
+        url: `riderGetRide/ride-request/${requestId}/change-destination`,
+        method: "PATCH",
+        body,
+      }),
+    }),
+    changeTripDestination: builder.mutation<
+      ChangeTripDestinationResponse,
+      ChangeTripDestinationPayload
+    >({
+      query: ({ tripId, body }) => ({
+        url: `riderGetRide/trip/${tripId}/change-destination`,
+        method: "PATCH",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -253,4 +376,8 @@ export const {
   useGetRiderTripDriverProfileQuery,
   useCancelRiderTripMutation,
   useCancelRideRequestMutation,
+  useCheckRideRequestFareMutation,
+  useCheckTripFareMutation,
+  useChangeRideRequestDestinationMutation,
+  useChangeTripDestinationMutation,
 } = rideBookApi;

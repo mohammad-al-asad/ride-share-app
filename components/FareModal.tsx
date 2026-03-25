@@ -6,9 +6,16 @@ type ModalProps = {
   price: number;
   onCancel: () => void;
   onConfirm: () => void;
+  isLoading?: boolean;
 };
 
-const FareModal = ({ visible, price, onCancel, onConfirm }: ModalProps) => {
+const FareModal = ({
+  visible,
+  price,
+  onCancel,
+  onConfirm,
+  isLoading = false,
+}: ModalProps) => {
   return (
     <Modal animationType="fade" transparent={true} visible={visible}>
       <View style={styles.overlay}>
@@ -24,12 +31,25 @@ const FareModal = ({ visible, price, onCancel, onConfirm }: ModalProps) => {
 
           {/* Action Buttons */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
+            <TouchableOpacity
+              onPress={onCancel}
+              style={styles.cancelButton}
+              disabled={isLoading}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={onConfirm} style={styles.confirmButton}>
-              <Text style={styles.confirmText}>Yes</Text>
+            <TouchableOpacity
+              onPress={onConfirm}
+              style={[
+                styles.confirmButton,
+                isLoading ? styles.confirmButtonDisabled : null,
+              ]}
+              disabled={isLoading}
+            >
+              <Text style={styles.confirmText}>
+                {isLoading ? "Updating..." : "Yes"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -104,6 +124,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 16,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.7,
   },
   confirmText: {
     color: "#FFFFFF",
