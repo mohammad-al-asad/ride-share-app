@@ -61,10 +61,7 @@ const getApiErrorMessage = (error: any, fallbackMessage: string) =>
 const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
   const [isModal, setIsModal] = useState(false);
   const [isCancelModal, setIsCancelModal] = useState(false);
-  const [timerPhase, setTimerPhase] = useState<CancelTimerPhase>("pre_cancel");
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    PRE_CANCEL_COUNTDOWN_SECONDS,
-  );
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const activeTrip = useAppSelector(
     (state: RootState) => state.driverRideStart.activeTrip,
@@ -74,6 +71,54 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
     skip: !tripId,
   });
   const [cancelTrip, { isLoading: isCancelingTrip }] = useCancelTripMutation();
+  const tripCreatedAtMs = useMemo(() => {
+    if (!activeTrip?.createdAt) {
+      return Number.NaN;
+    }
+
+    const parsed = new Date(activeTrip.createdAt).getTime();
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }, [activeTrip?.createdAt]);
+
+  const elapsedSeconds = useMemo(() => {
+    if (!Number.isFinite(tripCreatedAtMs)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.floor((nowMs - tripCreatedAtMs) / 1000));
+  }, [nowMs, tripCreatedAtMs]);
+
+  const { timerPhase, remainingSeconds } = useMemo(() => {
+    const totalCountdownSeconds =
+      PRE_CANCEL_COUNTDOWN_SECONDS + CANCEL_WINDOW_SECONDS;
+
+    if (!tripId || !Number.isFinite(tripCreatedAtMs)) {
+      return {
+        timerPhase: "pre_cancel" as CancelTimerPhase,
+        remainingSeconds: PRE_CANCEL_COUNTDOWN_SECONDS,
+      };
+    }
+
+    if (elapsedSeconds < PRE_CANCEL_COUNTDOWN_SECONDS) {
+      return {
+        timerPhase: "pre_cancel" as CancelTimerPhase,
+        remainingSeconds: PRE_CANCEL_COUNTDOWN_SECONDS - elapsedSeconds,
+      };
+    }
+
+    if (elapsedSeconds < totalCountdownSeconds) {
+      return {
+        timerPhase: "cancel_window" as CancelTimerPhase,
+        remainingSeconds: totalCountdownSeconds - elapsedSeconds,
+      };
+    }
+
+    return {
+      timerPhase: "ended" as CancelTimerPhase,
+      remainingSeconds: 0,
+    };
+  }, [elapsedSeconds, tripCreatedAtMs, tripId]);
+
   const showCancelButton = timerPhase !== "pre_cancel";
   const centerTimerBadge = !showCancelButton;
   const pickupCoordinate = useMemo(() => {
@@ -138,38 +183,14 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
 
   useEffect(() => {
     if (!tripId) {
-      setTimerPhase("pre_cancel");
-      setRemainingSeconds(PRE_CANCEL_COUNTDOWN_SECONDS);
       return;
     }
 
-    setTimerPhase("pre_cancel");
-    setRemainingSeconds(PRE_CANCEL_COUNTDOWN_SECONDS);
-  }, [tripId]);
-
-  useEffect(() => {
-    if (!tripId || timerPhase === "ended") {
-      return;
-    }
-
-    const timerId = setInterval(() => {
-      setRemainingSeconds((previous) => {
-        if (previous > 0) {
-          return previous - 1;
-        }
-
-        if (timerPhase === "pre_cancel") {
-          setTimerPhase("cancel_window");
-          return CANCEL_WINDOW_SECONDS;
-        }
-
-        setTimerPhase("ended");
-        return 0;
-      });
-    }, 1000);
+    setNowMs(Date.now());
+    const timerId = setInterval(() => setNowMs(Date.now()), 1000);
 
     return () => clearInterval(timerId);
-  }, [tripId, timerPhase]);
+  }, [tripId]);
 
   const timerText = useMemo(() => {
     const minutes = Math.floor(remainingSeconds / 60);

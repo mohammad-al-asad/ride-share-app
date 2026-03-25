@@ -1,5 +1,6 @@
 import AuthBackground from "@/components/AuthBackground";
 import { colors } from "@/config/colors";
+import { useGetActiveRideQuery } from "@/redux/api/rideBookApi";
 import { useAppSelector } from "@/redux/hooks";
 import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { scale } from "react-native-size-matters";
+import { scale, verticalScale } from "react-native-size-matters";
 
 const RECENT_LOCATIONS = [
   {
@@ -31,7 +32,24 @@ const RECENT_LOCATIONS = [
 
 export default function HomeScreen() {
   const user = useAppSelector((state: RootState) => state.auth.user);
+  const authToken = useAppSelector((state: RootState) => state.auth.token);
+  const latestRideRequest = useAppSelector(
+    (state: RootState) => state.rideBook.latestRideRequest,
+  );
+  const activeTrip = useAppSelector((state: RootState) => state.rideBook.activeTrip);
   const userName = user?.name?.trim() || "User";
+  useGetActiveRideQuery(undefined, {
+    skip: !user || !authToken,
+    refetchOnMountOrArgChange: true,
+  });
+
+  const hasActiveRideRequest =
+    Boolean(latestRideRequest) &&
+    !["cancelled", "completed", "expired"].includes(
+      String(latestRideRequest?.status ?? "").toLowerCase(),
+    );
+  const hasActiveRide = hasActiveRideRequest || Boolean(activeTrip);
+
   return (
     <View style={styles.mainContainer}>
       {/* Background Grid */}
@@ -96,6 +114,19 @@ export default function HomeScreen() {
           )}
         />
       </View>
+
+      {hasActiveRide && (
+        <TouchableOpacity
+          style={styles.ridingShortcut}
+          activeOpacity={0.85}
+          onPress={() => router.push("/(protected)/(book)/ride-map" as any)}
+        >
+          <Text style={styles.ridingShortcutText}>Riding...</Text>
+          <View style={styles.ridingShortcutIcon}>
+            <Ionicons name="car-sport" size={16} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -204,5 +235,36 @@ const styles = StyleSheet.create({
   locationAddress: {
     fontSize: 13,
     color: "#666",
+  },
+  ridingShortcut: {
+    position: "absolute",
+    bottom: verticalScale(120),
+    alignSelf: "center",
+    backgroundColor: "#A5B4FC",
+    paddingLeft: 14,
+    paddingRight: 4,
+    paddingVertical: 4,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  ridingShortcutText: {
+    color: "#4F46E5",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  ridingShortcutIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#312E81",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

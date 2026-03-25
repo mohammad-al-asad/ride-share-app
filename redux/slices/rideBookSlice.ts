@@ -1,4 +1,5 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { rideBookApi } from "../api/rideBookApi";
 
 export type RideScheduleKind = "now" | "later";
 export type RideVehicleType = "car" | "suv" | "van";
@@ -111,6 +112,11 @@ export type RiderTripRealtime = {
   riderId?: string;
   driverId?: string;
   vehicleId?: string;
+  otp?: {
+    hash?: string;
+    expiresAt?: string;
+    verifiedAt?: string | null;
+  };
   pickup?: RideStop;
   dropoff?: RideStop;
   status?: string;
@@ -316,6 +322,42 @@ const rideBookSlice = createSlice({
       state.matchedVehicle = null;
       state.driverProgress = null;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addMatcher(
+        rideBookApi.endpoints.getActiveRide.matchFulfilled,
+        (state, action) => {
+          const { activeRequest, activeTrip } = action.payload.data;
+          state.latestRideRequest = activeRequest ?? null;
+          state.activeTrip = activeTrip ?? null;
+
+          // Active ride endpoint does not include driver/vehicle/progress details.
+          state.matchedDriver = null;
+          state.matchedVehicle = null;
+          state.driverProgress = null;
+        },
+      )
+      .addMatcher(
+        rideBookApi.endpoints.cancelRiderTrip.matchFulfilled,
+        (state) => {
+          state.latestRideRequest = null;
+          state.activeTrip = null;
+          state.matchedDriver = null;
+          state.matchedVehicle = null;
+          state.driverProgress = null;
+        },
+      )
+      .addMatcher(
+        rideBookApi.endpoints.cancelRideRequest.matchFulfilled,
+        (state) => {
+          state.latestRideRequest = null;
+          state.activeTrip = null;
+          state.matchedDriver = null;
+          state.matchedVehicle = null;
+          state.driverProgress = null;
+        },
+      );
   },
 });
 

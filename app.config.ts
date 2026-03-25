@@ -20,6 +20,7 @@ export default {
       },
     },
     android: {
+      softwareKeyboardLayoutMode: "resize",
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_MAP_API_KEY,

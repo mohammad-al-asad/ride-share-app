@@ -1,10 +1,68 @@
+import { useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const TripDetails = () => {
+  const latestRideRequest = useAppSelector(
+    (state: RootState) => state.rideBook.latestRideRequest,
+  );
+  const activeTrip = useAppSelector(
+    (state: RootState) => state.rideBook.activeTrip,
+  );
+  const otpCode = activeTrip?.otp?.hash?.trim() ?? "";
+
+  const dropoffAddress =
+    activeTrip?.dropoff?.address ||
+    latestRideRequest?.dropoff?.address ||
+    "Dropoff not set";
+
+  const rideStatusText = useMemo(() => {
+    const status = (
+      activeTrip?.status ??
+      latestRideRequest?.status ??
+      ""
+    ).toLowerCase();
+    if (status === "started") {
+      return "Heading to dropoff location";
+    }
+    if (status === "completed") {
+      return "Ride completed";
+    }
+    return "Meet at the pickup location";
+  }, [activeTrip?.status, latestRideRequest?.status]);
+
+  const priceText = useMemo(() => {
+    const fareValue =
+      activeTrip?.pricing?.finalFare ??
+      activeTrip?.pricing?.estimatedFare ??
+      latestRideRequest?.quote?.estimatedFare;
+    const currency =
+      activeTrip?.pricing?.currency ??
+      latestRideRequest?.quote?.currency ??
+      "USD";
+    const numericFare = Number(fareValue);
+
+    if (!Number.isFinite(numericFare)) {
+      return "--";
+    }
+
+    if (currency.toUpperCase() === "USD") {
+      return `$${numericFare.toFixed(2)}`;
+    }
+
+    return `${currency} ${numericFare.toFixed(2)}`;
+  }, [
+    activeTrip?.pricing?.currency,
+    activeTrip?.pricing?.estimatedFare,
+    activeTrip?.pricing?.finalFare,
+    latestRideRequest?.quote?.currency,
+    latestRideRequest?.quote?.estimatedFare,
+  ]);
+
   return (
     <View style={styles.detailsCard}>
       <View style={styles.detailItem}>
@@ -13,7 +71,7 @@ const TripDetails = () => {
         </View>
         <View style={styles.detailTextContainer}>
           <Text style={styles.detailLabel}>Dropoff location</Text>
-          <Text style={styles.detailValue}>Gulshan 1 DNCC Market</Text>
+          <Text style={styles.detailValue}>{dropoffAddress}</Text>
         </View>
         <TouchableOpacity
           style={styles.editButton}
@@ -36,7 +94,7 @@ const TripDetails = () => {
         </View>
         <View style={styles.detailTextContainer}>
           <Text style={styles.detailLabel}>Ride details</Text>
-          <Text style={styles.detailValue}>Meet at the pickup location</Text>
+          <Text style={styles.detailValue}>{rideStatusText}</Text>
         </View>
       </View>
 
@@ -46,7 +104,16 @@ const TripDetails = () => {
         </View>
         <View style={styles.detailTextContainer}>
           <Text style={styles.detailLabel}>Estimated Price</Text>
-          <Text style={styles.detailValue}>$5.00</Text>
+          <Text style={styles.detailValue}>{priceText}</Text>
+        </View>
+      </View>
+      <View style={[styles.detailItem, styles.otpItem]}>
+        <View style={[styles.iconContainer]}>
+          <Ionicons name="shield-checkmark-outline" size={25} color="#6366F1" />
+        </View>
+        <View style={styles.detailTextContainer}>
+          <Text style={styles.detailLabel}>Share this OTP with driver</Text>
+          <Text style={styles.otpText}>{otpCode || "--"}</Text>
         </View>
       </View>
     </View>
@@ -77,4 +144,17 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 12, color: "#999" },
   editButton: { padding: 8, backgroundColor: "#C7D2FE", borderRadius: 8 },
   detailValue: { fontSize: 14, fontWeight: "600", color: "#333" },
+  otpItem: {
+    marginBottom: 0,
+  },
+  otpIconContainer: {
+    backgroundColor: "#EEF2FF",
+  },
+  otpText: {
+    marginTop: 2,
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#1F2937",
+    letterSpacing: 1,
+  },
 });

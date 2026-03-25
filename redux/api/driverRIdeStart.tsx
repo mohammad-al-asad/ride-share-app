@@ -150,6 +150,10 @@ export type DriverRiderProfile = {
   profileImage?: string | null;
   ratingAvg?: number;
   ratingCount?: number;
+  tripsCount?: number;
+  profileCreatedAt?: string;
+  daysOnPlatform?: number;
+  yearsOnPlatform?: number;
 };
 
 export type DriverRiderReview = {
@@ -157,6 +161,16 @@ export type DriverRiderReview = {
   stars?: number;
   comment?: string;
   createdAt?: string;
+  driver?: {
+    _id?: string;
+    name?: string;
+    profileImage?: string | null;
+  };
+  rider?: {
+    _id?: string;
+    name?: string;
+    profileImage?: string | null;
+  };
 };
 
 export type DriverTripRiderProfileResponse = {

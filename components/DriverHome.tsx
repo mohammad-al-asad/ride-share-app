@@ -6,16 +6,41 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import MapView from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import { MarkerCircle } from "./AnimatedMarker";
 import AuthBackground from "./AuthBackground";
 import DriverAvailabilityButton, {
   DriverCoordinate,
 } from "./DriverAvailabilityButton";
+import { MarkerTriangle, MarkerUser } from "./Markers";
+import RoadPolyline from "./RoadPolyline";
 import RequiredActions from "./RequiredActions";
+
+const DEFAULT_COORDINATE: DriverCoordinate = {
+  latitude: 23.7806,
+  longitude: 90.4071,
+};
+
+const pointToCoordinate = (
+  coordinates?: [number, number] | null,
+): DriverCoordinate | null => {
+  if (
+    !coordinates ||
+    coordinates.length < 2 ||
+    typeof coordinates[0] !== "number" ||
+    typeof coordinates[1] !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    latitude: coordinates[1],
+    longitude: coordinates[0],
+  };
+};
 
 export default function HomeScreen() {
   const user = useAppSelector((state: RootState) => state.auth.user);
@@ -28,10 +53,33 @@ export default function HomeScreen() {
   const isOnline = useAppSelector(
     (state: RootState) => state.driverRideStart.isOnline,
   );
+  const storedDriverLocation = useAppSelector(
+    (state: RootState) => state.driverRideStart.location,
+  );
+  const activeTrip = useAppSelector(
+    (state: RootState) => state.driverRideStart.activeTrip,
+  );
   const userName = user?.name?.trim() || "User";
-  const [driverLocation, setDriverLocation] = useState<DriverCoordinate | null>(null);
+  const initialDriverLocation = storedDriverLocation
+    ? pointToCoordinate(storedDriverLocation.point.coordinates) ?? DEFAULT_COORDINATE
+    : DEFAULT_COORDINATE;
+  const [driverLocation, setDriverLocation] = useState<DriverCoordinate | null>(
+    initialDriverLocation,
+  );
   const [heading, setHeading] = useState(0);
   const mapRef = useRef<MapView | null>(null);
+  const pickupCoordinate = activeTrip
+    ? pointToCoordinate(activeTrip.pickup.point.coordinates)
+    : null;
+  const dropoffCoordinate = activeTrip
+    ? pointToCoordinate(activeTrip.dropoff.point.coordinates)
+    : null;
+  const currentDriverCoordinate = driverLocation ?? initialDriverLocation;
+  const tripPolylineCoordinates = [
+    currentDriverCoordinate,
+    pickupCoordinate,
+    dropoffCoordinate,
+  ].filter((coordinate): coordinate is DriverCoordinate => Boolean(coordinate));
 
   useFocusEffect(
     useCallback(() => {
@@ -71,6 +119,12 @@ export default function HomeScreen() {
     }, []),
   );
 
+  useEffect(() => {
+    if (storedDriverLocation) {
+      setDriverLocation(pointToCoordinate(storedDriverLocation.point.coordinates));
+    }
+  }, [storedDriverLocation]);
+
   return (
     <View style={styles.mainContainer}>
       <AuthBackground />
@@ -103,12 +157,20 @@ export default function HomeScreen() {
             showsUserLocation={false}
             userInterfaceStyle="light"
             initialRegion={{
-              latitude: 32.78,
-              longitude: -96.8,
+              latitude: currentDriverCoordinate.latitude,
+              longitude: currentDriverCoordinate.longitude,
               latitudeDelta: 0.01,
               longitudeDelta: 0.01,
             }}
           >
+            {tripPolylineCoordinates.length > 1 && (
+              <RoadPolyline
+                coordinates={tripPolylineCoordinates}
+                strokeColor="#6366F1"
+                strokeWidth={4}
+              />
+            )}
+
             {driverLocation && (
               <MarkerCircle
                 coordinate={driverLocation}
@@ -117,6 +179,18 @@ export default function HomeScreen() {
                 rotation={heading}
                 tracksViewChanges={true}
               />
+            )}
+
+            {pickupCoordinate && (
+              <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={pickupCoordinate}>
+                <MarkerUser />
+              </Marker>
+            )}
+
+            {dropoffCoordinate && (
+              <Marker anchor={{ x: 0.5, y: 0.5 }} coordinate={dropoffCoordinate}>
+                <MarkerTriangle />
+              </Marker>
             )}
           </MapView>
           <TouchableOpacity
@@ -133,15 +207,34 @@ export default function HomeScreen() {
 
         {/* Button */}
         <View style={{ alignItems: "center" }}>
-          <DriverAvailabilityButton
-            driverLocation={driverLocation}
-            style={styles.goOnlineButton}
-            onlineStyle={styles.stopButton}
-            textStyle={styles.goOnlineText}
-          />
+          {activeTrip ? (
+            <TouchableOpacity
+              style={styles.ridingShortcut}
+              activeOpacity={0.85}
+              onPress={() =>
+                router.push({
+                  pathname: "/(protected)/(driver)/(home)/zoomed-map",
+                })
+              }
+            >
+              <Text style={styles.ridingShortcutText}>Riding...</Text>
+              <View style={styles.ridingShortcutIcon}>
+                <Ionicons name="car-sport" size={16} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <DriverAvailabilityButton
+              driverLocation={driverLocation}
+              style={styles.goOnlineButton}
+              onlineStyle={styles.stopButton}
+              textStyle={styles.goOnlineText}
+            />
+          )}
           <Text style={styles.statusText}>
-            {driverStatusMessage ??
-              (isOnline ? "Driver is now online" : "Driver is now offline")}
+            {activeTrip
+              ? "You have an active trip in progress"
+              : driverStatusMessage ??
+                (isOnline ? "Driver is now online" : "Driver is now offline")}
           </Text>
         </View>
       </View>
@@ -240,5 +333,36 @@ const styles = StyleSheet.create({
     color: colors.secondaryText,
     fontSize: moderateScale(13),
     marginTop: scale(-8),
+  },
+  ridingShortcut: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#A5B4FC",
+    borderRadius: 999,
+    paddingLeft: scale(14),
+    paddingRight: scale(4),
+    paddingVertical: scale(4),
+    marginHorizontal: scale(20),
+    marginVertical: scale(15),
+    marginBottom: verticalScale(100),
+    gap: scale(8),
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  ridingShortcutText: {
+    color: "#4F46E5",
+    fontWeight: "600",
+    fontSize: moderateScale(12),
+  },
+  ridingShortcutIcon: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
+    backgroundColor: "#312E81",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

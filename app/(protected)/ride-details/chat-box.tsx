@@ -29,6 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 const resolveUserId = (user: TripChatUser | string | null | undefined) => {
@@ -92,6 +93,7 @@ const markOwnMessagesAsSeen = (
   });
 
 export default function ChatScreen() {
+  const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList<TripChatMessage> | null>(null);
   const [inputText, setInputText] = useState("");
   const [messages, setMessages] = useState<TripChatMessage[]>([]);
@@ -191,6 +193,10 @@ export default function ChatScreen() {
       return;
     }
 
+    const joinTripRoom = () => {
+      socket.emit("chat:join", { tripId });
+    };
+
     const handleJoined = () => {
       markSeenNow();
     };
@@ -261,13 +267,20 @@ export default function ChatScreen() {
       }
     };
 
+    const handleConnect = () => {
+      joinTripRoom();
+    };
+
     socket.on("chat:joined", handleJoined);
     socket.on("chat:new", handleNewMessage);
     socket.on("chat:sent", handleMessageSent);
     socket.on("chat:seen:update", handleSeenUpdate);
     socket.on("chat:error", handleChatError);
+    socket.on("connect", handleConnect);
 
-    socket.emit("chat:join", { tripId });
+    if (socket.connected) {
+      joinTripRoom();
+    }
 
     return () => {
       socket.emit("chat:leave", { tripId });
@@ -276,6 +289,7 @@ export default function ChatScreen() {
       socket.off("chat:sent", handleMessageSent);
       socket.off("chat:seen:update", handleSeenUpdate);
       socket.off("chat:error", handleChatError);
+      socket.off("connect", handleConnect);
     };
   }, [authToken, authUserId, markSeenNow, tripId]);
 
@@ -305,8 +319,8 @@ export default function ChatScreen() {
     setMessages((prev) => mergeIncomingMessage(prev, optimisticMessage));
     setInputText("");
 
-    const socket = getRealtimeSocket();
-    if (socket?.connected) {
+    const socket = authToken ? connectRealtimeSocket(authToken) : getRealtimeSocket();
+    if (socket) {
       socket.emit("chat:send", { tripId, text, tempId });
       return;
     }
@@ -333,7 +347,7 @@ export default function ChatScreen() {
           "Could not send your message. Please try again.",
       );
     }
-  }, [authUserId, inputText, sendTripChatMessage, tripId]);
+  }, [authToken, authUserId, inputText, sendTripChatMessage, tripId]);
 
   const renderItem = ({ item }: { item: TripChatMessage }) => {
     const isSent = resolveUserId(item.senderId) === authUserId;
@@ -406,7 +420,11 @@ export default function ChatScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={0}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -437,28 +455,29 @@ export default function ChatScreen() {
             {isMessagesLoading ? "Loading messages..." : "No messages yet"}
           </Text>
         }
+        keyboardShouldPersistTaps="handled"
       />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={verticalScale(10)}
+      <View
+        style={[
+          styles.inputContainer,
+          { paddingBottom: Math.max(insets.bottom, verticalScale(12)) },
+        ]}
       >
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type here..."
-            placeholderTextColor="#9CA3AF"
-            value={inputText}
-            onChangeText={setInputText}
-            onSubmitEditing={handleSendMessage}
-            returnKeyType="send"
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-            <Ionicons name="send" size={20} color="#FFD700" />
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Type here..."
+          placeholderTextColor="#9CA3AF"
+          value={inputText}
+          onChangeText={setInputText}
+          onSubmitEditing={handleSendMessage}
+          returnKeyType="send"
+        />
+        <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
+          <Ionicons name="send" size={20} color="#FFD700" />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
