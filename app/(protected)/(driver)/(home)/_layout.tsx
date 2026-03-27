@@ -13,12 +13,6 @@ export default function RootLayout() {
           animation: "simple_push",
         }}
       />
-      <Stack.Screen
-        name="ride-completed"
-        options={{
-          animation: "simple_push",
-        }}
-      />
     </Stack>
   );
 }

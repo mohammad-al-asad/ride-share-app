@@ -1,4 +1,5 @@
 import { colors } from "@/config/colors";
+import { useGetDriverEarningsTodayQuery } from "@/redux/api/driverRIdeStart";
 import { Home01Icon, ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
 import { router } from "expo-router";
@@ -18,11 +19,18 @@ import DriverAvailabilityButton, {
 type TopMapControllsProps = {
   driverLocation?: DriverCoordinate | null;
   onStatusChange?: (isOnline: boolean) => void;
-  price?: number;
 };
 
-const TopMapControlls = ({ driverLocation, price }: TopMapControllsProps) => {
+const TopMapControlls = ({ driverLocation }: TopMapControllsProps) => {
   const [isEyeOpened, setIsEyeOpened] = useState(true);
+  const { data: earningsTodayResponse, isFetching } = useGetDriverEarningsTodayQuery();
+
+  const currency = earningsTodayResponse?.data?.currency ?? "USD";
+  const currencyLabel = currency.toUpperCase();
+  const earningsValue = Number(earningsTodayResponse?.data?.summary?.earnings);
+  const earningsText = Number.isFinite(earningsValue)
+    ? earningsValue.toFixed(2)
+    : "--";
 
   // Reanimated shared value
   const eyeValue = useSharedValue(1);
@@ -50,8 +58,8 @@ const TopMapControlls = ({ driverLocation, price }: TopMapControllsProps) => {
         {!isEyeOpened && (
           <View style={[{ flexDirection: "row", alignItems: "center" }]}>
             <Text style={styles.walletText} numberOfLines={1}>
-              <Text style={{ color: "#FFD283" }}>USD</Text>{" "}
-              {price?.toFixed(2)}
+              <Text style={{ color: "#FFD283" }}>{currencyLabel}</Text>{" "}
+              {isFetching ? "..." : earningsText}
             </Text>
           </View>
         )}

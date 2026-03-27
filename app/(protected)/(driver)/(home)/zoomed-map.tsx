@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import NavigationCard from "@/components/NavigationCard";
 
 type Coordinate = {
   latitude: number;
@@ -119,6 +120,36 @@ export default function HomeScreen() {
     hasPickedUpRider ? null : pickupCoordinate,
     dropoffCoordinate,
   ].filter(isCoordinate);
+  const navigationTargetCoordinate = pickupTrackingCoordinate ?? dropoffCoordinate;
+  const navigationDestinationText = hasPickedUpRider
+    ? activeTrip?.dropoff?.address ?? "Dropoff location"
+    : activeTrip?.pickup?.address ?? "Pickup location";
+  const navigationRoadText = navigationDestinationText.split(",")[0]?.trim()
+    ? navigationDestinationText.split(",")[0]!.trim()
+    : navigationDestinationText;
+  const navigationDistanceText = isCoordinate(navigationTargetCoordinate)
+    ? (() => {
+        const meters = getDistance(
+          driverLocation.latitude,
+          driverLocation.longitude,
+          navigationTargetCoordinate.latitude,
+          navigationTargetCoordinate.longitude,
+        );
+        if (meters >= 1000) {
+          return `${(meters / 1000).toFixed(1)} km`;
+        }
+        return `${Math.max(1, Math.round(meters))} m`;
+      })()
+    : "--";
+  const hasArrivedAtPickup = Boolean(
+    pickupTrackingCoordinate &&
+      getDistance(
+        driverLocation.latitude,
+        driverLocation.longitude,
+        pickupTrackingCoordinate.latitude,
+        pickupTrackingCoordinate.longitude,
+      ) <= 30,
+  );
   const fallbackPolylineCoordinates =
     tripCoordinates.length > 0 ? [driverLocation, ...tripCoordinates] : [];
   const polylineCoordinates =
@@ -326,10 +357,16 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.mainContainer}>
-      <TopMapControlls
-        driverLocation={driverLocation}
-        price={activeTrip?.pricing.finalFare}
-      />
+      {!activeTrip && <TopMapControlls driverLocation={driverLocation} />}
+      {activeTrip && (
+        <NavigationCard
+          distance={navigationDistanceText}
+          roadName={navigationRoadText}
+          pickupLocation={navigationDestinationText}
+          maneuver="straight"
+          arrived={hasArrivedAtPickup}
+        />
+      )}
 
       <MapView
         ref={mapRef}

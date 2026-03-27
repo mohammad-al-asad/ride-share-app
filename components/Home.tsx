@@ -1,34 +1,69 @@
 import AuthBackground from "@/components/AuthBackground";
 import { colors } from "@/config/colors";
-import { useGetActiveRideQuery } from "@/redux/api/rideBookApi";
+import { useGetActiveRideQuery, useGetRiderTripsQuery } from "@/redux/api/rideBookApi";
 import { useAppSelector } from "@/redux/hooks";
 import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { scale, verticalScale } from "react-native-size-matters";
 
-const RECENT_LOCATIONS = [
-  {
-    id: "1",
-    name: "Hazrat Shahjalal International Airport",
-    address: "Airport - Dakshinkhan Rd, Dhaka",
-  },
-  {
-    id: "2",
-    name: "Hazrat Shahjalal International Airport",
-    address: "Airport - Dakshinkhan Rd, Dhaka",
-  },
-];
+const getApiErrorMessage = (error: unknown, fallbackMessage: string) => {
+  const payload = error as
+    | {
+        data?: {
+          message?: string;
+          error?: {
+            message?: string;
+          };
+        };
+      }
+    | undefined;
+
+  return (
+    payload?.data?.error?.message ?? payload?.data?.message ?? fallbackMessage
+  );
+};
+
+const formatTripDateTime = (value?: string) => {
+  if (!value) {
+    return "--";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const formatStatus = (status?: string) => {
+  if (!status) {
+    return "Unknown";
+  }
+
+  return status
+    .split("_")
+    .map((part) =>
+      part.length > 0 ? part[0].toUpperCase() + part.slice(1).toLowerCase() : "",
+    )
+    .join(" ");
+};
 
 export default function HomeScreen() {
   const user = useAppSelector((state: RootState) => state.auth.user);
@@ -42,6 +77,27 @@ export default function HomeScreen() {
     skip: !user || !authToken,
     refetchOnMountOrArgChange: true,
   });
+  const riderTripsQuery = useGetRiderTripsQuery(undefined, {
+    skip: !user || !authToken || user.role === "driver",
+    refetchOnMountOrArgChange: true,
+  });
+
+  const recentTrips = useMemo(() => {
+    const trips = riderTripsQuery.data?.data?.trips ?? [];
+
+    return [...trips]
+      .sort((a, b) => {
+        const aTime = new Date(a.createdAt ?? "").getTime();
+        const bTime = new Date(b.createdAt ?? "").getTime();
+        return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+      })
+      .slice(0, 5);
+  }, [riderTripsQuery.data?.data?.trips]);
+
+  const isRecentTripsLoading = riderTripsQuery.isLoading || riderTripsQuery.isFetching;
+  const recentTripsErrorMessage = riderTripsQuery.error
+    ? getApiErrorMessage(riderTripsQuery.error, "Could not load recent trips.")
+    : null;
 
   const hasActiveRideRequest =
     Boolean(latestRideRequest) &&
@@ -68,23 +124,33 @@ export default function HomeScreen() {
 
         {/* Search Bar Section */}
         <View style={styles.searchContainer}>
-          <View style={styles.searchInputWrapper}>
+          <TouchableOpacity
+            style={styles.searchInputWrapper}
+            activeOpacity={0.8}
+            onPress={() =>
+              router.push({
+                pathname: "/(protected)/(book)",
+                params: { pickupType: "now" },
+              } as any)
+            }
+          >
             <Ionicons
               name="search-outline"
               size={20}
               color="#666"
               style={styles.searchIcon}
             />
-            <TextInput
-              placeholder="Get a ride"
-              style={styles.input}
-              placeholderTextColor="#999"
-            />
-          </View>
+            <Text style={styles.input}>Get a ride</Text>
+          </TouchableOpacity>
           <View style={styles.divider} />
           <TouchableOpacity
             style={styles.laterButton}
-            onPress={() => router.push("/(protected)/(book)" as any)}
+            onPress={() =>
+              router.push({
+                pathname: "/(protected)/(book)",
+                params: { pickupType: "later" },
+              } as any)
+            }
           >
             <Ionicons name="calendar-outline" size={18} color={colors.main} />
             <Text style={styles.laterText}>Later</Text>
@@ -92,27 +158,62 @@ export default function HomeScreen() {
         </View>
 
         {/* Recent Locations */}
-        <Text style={styles.sectionTitle}>Recent</Text>
+        <Text style={styles.sectionTitle}>Recent Trips</Text>
 
-        <FlatList
-          data={RECENT_LOCATIONS}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.locationItem}>
-              <View style={styles.timeIconContainer}>
-                <Ionicons name="time-outline" size={20} color="#333" />
-              </View>
-              <View style={styles.locationTextContainer}>
-                <Text style={styles.locationName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.locationAddress} numberOfLines={1}>
-                  {item.address}
-                </Text>
-              </View>
-            </TouchableOpacity>
+        {isRecentTripsLoading && (
+          <View style={styles.infoContainer}>
+            <ActivityIndicator size="small" color={colors.main} />
+            <Text style={styles.infoText}>Loading recent trips...</Text>
+          </View>
+        )}
+
+        {!isRecentTripsLoading && recentTripsErrorMessage && (
+          <View style={styles.infoContainer}>
+            <Text style={styles.errorText}>{recentTripsErrorMessage}</Text>
+          </View>
+        )}
+
+        {!isRecentTripsLoading &&
+          !recentTripsErrorMessage &&
+          recentTrips.length === 0 && (
+            <View style={styles.infoContainer}>
+              <Text style={styles.infoText}>No recent trips found.</Text>
+            </View>
           )}
-        />
+
+        {!isRecentTripsLoading &&
+          !recentTripsErrorMessage &&
+          recentTrips.length > 0 && (
+            <FlatList
+              data={recentTrips}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.locationItem}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(protected)/ride-details",
+                      params: { tripId: item._id },
+                    })
+                  }
+                >
+                  <View style={styles.timeIconContainer}>
+                    <Ionicons name="time-outline" size={20} color="#333" />
+                  </View>
+                  <View style={styles.locationTextContainer}>
+                    <Text style={styles.locationName} numberOfLines={1}>
+                      {item.destination?.trim() ||
+                        item.dropoff?.address?.trim() ||
+                        "Destination unavailable"}
+                    </Text>
+                    <Text style={styles.locationAddress} numberOfLines={1}>
+                      {`${formatTripDateTime(item.createdAt)} | ${formatStatus(item.status)}`}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          )}
       </View>
 
       {hasActiveRide && (
@@ -235,6 +336,21 @@ const styles = StyleSheet.create({
   locationAddress: {
     fontSize: 13,
     color: "#666",
+  },
+  infoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: verticalScale(14),
+  },
+  infoText: {
+    marginTop: verticalScale(8),
+    fontSize: 13,
+    color: "#6B7280",
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#B91C1C",
+    textAlign: "center",
   },
   ridingShortcut: {
     position: "absolute",

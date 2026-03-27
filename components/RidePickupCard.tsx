@@ -20,7 +20,7 @@ import VerifyRiderModal from "./VerifyRiderModal";
 const PRE_CANCEL_COUNTDOWN_SECONDS = 90; // 1.5 minutes
 const CANCEL_WINDOW_SECONDS = 270; // 4.5 minutes
 const PICKUP_ARRIVAL_RADIUS_METERS = 30;
-const DROPOFF_ARRIVAL_RADIUS_METERS = 35;
+const DROPOFF_ARRIVAL_RADIUS_METERS = 35000;
 
 type CancelTimerPhase = "pre_cancel" | "cancel_window" | "ended";
 
@@ -335,7 +335,7 @@ const RiderPickupCard = ({ currentLocation }: RiderPickupCardProps) => {
       Alert.alert("Ride completed", successMessage, [
         {
           text: "OK",
-          onPress: () => router.push("/(protected)/(driver)/(home)/ride-completed"),
+          onPress: () => router.push("/(protected)/ride-details/ride-status"),
         },
       ]);
     } catch (error: any) {

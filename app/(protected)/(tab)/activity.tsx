@@ -1,12 +1,21 @@
 import AuthBackground from "@/components/AuthBackground";
 import { colors } from "@/config/colors";
+import {
+  DriverTripHistoryItem,
+  useGetDriverTripsQuery,
+} from "@/redux/api/driverRIdeStart";
+import {
+  RiderTripHistoryItem,
+  useGetRiderTripsQuery,
+} from "@/redux/api/rideBookApi";
 import { useAppSelector } from "@/redux/hooks";
 import { RootState } from "@/redux/store";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   ScrollView,
@@ -45,87 +54,143 @@ const NOTIFICATIONS = [
   },
 ];
 
-// Mock data based on your UI
-const RIDE_HISTORY = [
-  {
-    id: "1",
-    location: "Gulshan 1 DNCC Market",
-    date: "Jan 18 • 6:53 AM",
-    price: "$5.00",
-    status: "Canceled",
-    image: require("../../../assets/images/cars/car.png"),
-  },
-  {
-    id: "2",
-    location: "Gulshan 1 DNCC Market",
-    date: "Jan 18 • 6:53 AM",
-    price: "$5.00",
-    status: "Completed",
-    image: require("../../../assets/images/cars/car.png"),
-  },
-  {
-    id: "3",
-    location: "Gulshan 1 DNCC Market",
-    date: "Jan 18 • 6:53 AM",
-    price: "$0.00",
-    status: "Canceled",
-    image: require("../../../assets/images/cars/car.png"),
-  },
-];
+type TripHistoryItem = DriverTripHistoryItem | RiderTripHistoryItem;
+
+const getApiErrorMessage = (error: unknown, fallbackMessage: string) => {
+  const payload = error as
+    | {
+        data?: {
+          message?: string;
+          error?: {
+            message?: string;
+          };
+        };
+      }
+    | undefined;
+
+  return (
+    payload?.data?.error?.message ?? payload?.data?.message ?? fallbackMessage
+  );
+};
+
+const formatTripDateTime = (value?: string) => {
+  if (!value) {
+    return "--";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "--";
+  }
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const formatTripStatus = (status?: string) => {
+  if (!status) {
+    return "Unknown";
+  }
+
+  return status
+    .split("_")
+    .map((part) =>
+      part.length > 0 ? part[0].toUpperCase() + part.slice(1).toLowerCase() : "",
+    )
+    .join(" ");
+};
+
+const formatTripFare = (currency?: string, amount?: number) => {
+  const numeric = Number(amount);
+  if (!Number.isFinite(numeric)) {
+    return "--";
+  }
+
+  if ((currency ?? "USD").toUpperCase() === "USD") {
+    return `$${numeric.toFixed(2)}`;
+  }
+
+  return `${currency ?? ""} ${numeric.toFixed(2)}`.trim();
+};
 
 export default function ActivityScreen() {
   const [activeTab, setActiveTab] = useState("history");
   const user = useAppSelector((state: RootState) => state.auth.user);
   const isDriver = user?.role === "driver";
-  const handleRebook = (status: string) => {};
 
-  const renderItem = ({ item }: { item: (typeof RIDE_HISTORY)[0] }) => (
-    <Pressable
-      style={styles.card}
-      onPress={() => {
-        console.log("pressed");
+  const driverTripsQuery = useGetDriverTripsQuery(undefined, {
+    skip: !isDriver,
+    refetchOnMountOrArgChange: true,
+  });
+  const riderTripsQuery = useGetRiderTripsQuery(undefined, {
+    skip: isDriver,
+    refetchOnMountOrArgChange: true,
+  });
 
-        router.push("/(protected)/ride-details");
-      }}
-    >
-      <View style={styles.cardContent}>
-        {/* Ride Image */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={item.image}
-            style={styles.carImage}
-            contentFit="contain"
-          />
-        </View>
-
-        {/* Ride Details */}
-        <View style={styles.detailsContainer}>
-          <Text style={styles.locationText} numberOfLines={1}>
-            {item.location}
-          </Text>
-          <Text style={styles.dateText}>{item.date}</Text>
-          <Text style={styles.priceStatusText}>
-            {item.price} • <Text style={styles.statusLabel}>{item.status}</Text>
-          </Text>
-        </View>
-
-        {isDriver ? (
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={24}
-            color="#262626"
-          />
-        ) : (
-          <TouchableOpacity
-            style={styles.rebookButton}
-            onPress={() => handleRebook(item.status)}
-          >
-            <Text style={styles.rebookText}>Rebook</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </Pressable>
+  const tripHistory = useMemo<TripHistoryItem[]>(
+    () =>
+      isDriver
+        ? driverTripsQuery.data?.data?.trips ?? []
+        : riderTripsQuery.data?.data?.trips ?? [],
+    [driverTripsQuery.data?.data?.trips, isDriver, riderTripsQuery.data?.data?.trips],
   );
+
+  const isHistoryLoading = isDriver
+    ? driverTripsQuery.isLoading || driverTripsQuery.isFetching
+    : riderTripsQuery.isLoading || riderTripsQuery.isFetching;
+  const historyError = isDriver ? driverTripsQuery.error : riderTripsQuery.error;
+  const historyErrorMessage = historyError
+    ? getApiErrorMessage(historyError, "Could not load trip history.")
+    : null;
+
+  const renderItem = ({ item }: { item: TripHistoryItem }) => {
+    const locationText =
+      item.destination?.trim() ||
+      item.dropoff?.address?.trim() ||
+      "Destination unavailable";
+    const dateText = formatTripDateTime(item.createdAt);
+    const fareValue = item.fare?.totalFare ?? item.fare?.finalFare;
+    const priceText = formatTripFare(item.fare?.currency, fareValue);
+    const statusText = formatTripStatus(item.status);
+
+    return (
+      <Pressable
+        style={styles.card}
+        onPress={() =>
+          router.push({
+            pathname: "/(protected)/ride-details",
+            params: { tripId: item._id },
+          })
+        }
+      >
+        <View style={styles.cardContent}>
+          <View style={styles.imageContainer}>
+            <Image
+              source={require("../../../assets/images/cars/car.png")}
+              style={styles.carImage}
+              contentFit="contain"
+            />
+          </View>
+
+          <View style={styles.detailsContainer}>
+            <Text style={styles.locationText} numberOfLines={1}>
+              {locationText}
+            </Text>
+            <Text style={styles.dateText}>{dateText}</Text>
+            <Text style={styles.priceStatusText}>
+              {priceText} | <Text style={styles.statusLabel}>{statusText}</Text>
+            </Text>
+          </View>
+
+          <MaterialCommunityIcons name="chevron-right" size={24} color="#262626" />
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -136,7 +201,6 @@ export default function ActivityScreen() {
       </View>
 
       <View style={styles.content}>
-        {/* Toggle Header */}
         {isDriver && (
           <View style={styles.toggleContainer}>
             <TouchableOpacity
@@ -171,7 +235,6 @@ export default function ActivityScreen() {
           </View>
         )}
 
-        {/* Notifications List */}
         {activeTab === "notifications" && (
           <ScrollView
             contentContainerStyle={styles.listContent}
@@ -196,15 +259,36 @@ export default function ActivityScreen() {
           </ScrollView>
         )}
 
-        {/* Notifications List */}
         {activeTab === "history" && (
-          <View>
-            <FlatList
-              data={RIDE_HISTORY}
-              keyExtractor={(item) => item.id}
-              renderItem={renderItem}
-              showsVerticalScrollIndicator={false}
-            />
+          <View style={styles.historyContainer}>
+            {isHistoryLoading && (
+              <View style={styles.infoContainer}>
+                <ActivityIndicator size="small" color={colors.main} />
+                <Text style={styles.infoText}>Loading trip history...</Text>
+              </View>
+            )}
+
+            {!isHistoryLoading && historyErrorMessage && (
+              <View style={styles.infoContainer}>
+                <Text style={styles.errorText}>{historyErrorMessage}</Text>
+              </View>
+            )}
+
+            {!isHistoryLoading && !historyErrorMessage && tripHistory.length === 0 && (
+              <View style={styles.infoContainer}>
+                <Text style={styles.infoText}>No trips found yet.</Text>
+              </View>
+            )}
+
+            {!isHistoryLoading && !historyErrorMessage && tripHistory.length > 0 && (
+              <FlatList
+                data={tripHistory}
+                keyExtractor={(item) => item._id}
+                renderItem={renderItem}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.historyListContent}
+              />
+            )}
           </View>
         )}
       </View>
@@ -224,7 +308,7 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: "row",
-    backgroundColor: "#E5E7EB", // Grey background for the toggle
+    backgroundColor: "#E5E7EB",
     borderRadius: scale(12),
     padding: scale(4),
     height: verticalScale(55),
@@ -237,7 +321,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(10),
   },
   activeTab: {
-    backgroundColor: "#FFFFFF", // White background for active tab
+    backgroundColor: "#FFFFFF",
   },
   tabText: {
     fontSize: moderateScale(14),
@@ -285,6 +369,28 @@ const styles = StyleSheet.create({
     flex: 0.25,
     textAlign: "right",
   },
+  historyContainer: {
+    flex: 1,
+    paddingBottom: verticalScale(100),
+  },
+  historyListContent: {
+    paddingBottom: verticalScale(16),
+  },
+  infoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: verticalScale(24),
+  },
+  infoText: {
+    marginTop: verticalScale(10),
+    fontSize: moderateScale(13),
+    color: "#6B7280",
+  },
+  errorText: {
+    fontSize: moderateScale(13),
+    color: "#B91C1C",
+    textAlign: "center",
+  },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: scale(12),
@@ -330,17 +436,6 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontWeight: "500",
-  },
-  rebookButton: {
-    backgroundColor: "#B4C0FF", // Matching the light blue/purple from UI
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(6),
-    borderRadius: scale(8),
-  },
-  rebookText: {
-    color: colors.main, // Deep purple brand color
-    fontSize: moderateScale(12),
-    fontWeight: "600",
   },
   headerContainer: {
     backgroundColor: colors.white,

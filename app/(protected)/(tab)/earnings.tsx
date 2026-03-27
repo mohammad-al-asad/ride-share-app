@@ -1,9 +1,21 @@
 import { colors } from "@/config/colors";
+import { useGetDriverEarningsSummaryQuery } from "@/redux/api/driverRIdeStart";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { Dropdown } from "react-native-element-dropdown"; //
+import React, { useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+
+type DropdownOption = {
+  label: string;
+  value: string;
+};
 
 const StatCard = ({ icon, value, label, iconColor }: any) => (
   <View style={styles.statCard}>
@@ -15,43 +27,127 @@ const StatCard = ({ icon, value, label, iconColor }: any) => (
   </View>
 );
 
-export default function EarningsScreen() {
-  // State for the selected value of each dropdown
-  const [selectedWeek, setSelectedWeek] = useState("1");
-  const [selectedMonth, setSelectedMonth] = useState();
-  const [selectedYear, setSelectedYear] = useState();
+const getApiErrorMessage = (error: any, fallback: string) =>
+  error?.data?.error?.message ?? error?.data?.message ?? fallback;
 
-  // Generate dynamic data for the last 4 timelines
-  const weekData = [
+const formatCurrency = (currency: string, amount: number | undefined) => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) {
+    return "--";
+  }
+
+  if (currency.toUpperCase() === "USD") {
+    return `USD ${numericAmount.toFixed(2)}`;
+  }
+
+  return `${currency.toUpperCase()} ${numericAmount.toFixed(2)}`;
+};
+
+const formatDateRange = (startAt?: string, endAt?: string) => {
+  if (!startAt || !endAt) {
+    return "--";
+  }
+
+  const start = new Date(startAt);
+  const end = new Date(endAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return "--";
+  }
+
+  const startText = start.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const endText = end.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return `${startText} - ${endText}`;
+};
+
+export default function EarningsScreen() {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
+
+  const [selectedWeek, setSelectedWeek] = useState("1");
+  const [selectedMonth, setSelectedMonth] = useState(String(currentMonth));
+  const [selectedYear, setSelectedYear] = useState(String(currentYear));
+
+  const weekData: DropdownOption[] = [
     { label: "1 week", value: "1" },
     { label: "2 week", value: "2" },
     { label: "3 week", value: "3" },
     { label: "4 week", value: "4" },
   ];
-  // Get current date
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
 
-  // Generate last 4 years dynamically
-  const yearData = Array.from({ length: 4 }, (_, i) => {
-    const year = currentYear - i;
-    return { label: year.toString(), value: year.toString() };
-  });
+  const yearData: DropdownOption[] = useMemo(
+    () =>
+      Array.from({ length: 4 }, (_, i) => {
+        const year = currentYear - i;
+        return { label: year.toString(), value: year.toString() };
+      }),
+    [currentYear],
+  );
 
-  const monthNames = [
-    { label: "Jan", value: "Jan" },
-    { label: "Feb", value: "Feb" },
-    { label: "Mar", value: "Mar" },
-    { label: "Apr", value: "Apr" },
-    { label: "May", value: "May" },
-    { label: "Jun", value: "Jun" },
-    { label: "Jul", value: "Jul" },
-    { label: "Aug", value: "Aug" },
-    { label: "Sep", value: "Sep" },
-    { label: "Oct", value: "Oct" },
-    { label: "Nov", value: "Nov" },
-    { label: "Dec", value: "Dec" },
+  const monthData: DropdownOption[] = [
+    { label: "Jan", value: "1" },
+    { label: "Feb", value: "2" },
+    { label: "Mar", value: "3" },
+    { label: "Apr", value: "4" },
+    { label: "May", value: "5" },
+    { label: "Jun", value: "6" },
+    { label: "Jul", value: "7" },
+    { label: "Aug", value: "8" },
+    { label: "Sep", value: "9" },
+    { label: "Oct", value: "10" },
+    { label: "Nov", value: "11" },
+    { label: "Dec", value: "12" },
   ];
+
+  const queryArgs = useMemo(
+    () => ({
+      period: "week" as const,
+      year: Number(selectedYear),
+      month: Number(selectedMonth),
+      week: Number(selectedWeek),
+    }),
+    [selectedMonth, selectedWeek, selectedYear],
+  );
+
+  const hasValidFilter =
+    Number.isFinite(queryArgs.year) &&
+    queryArgs.year > 0 &&
+    Number.isFinite(queryArgs.month) &&
+    queryArgs.month > 0 &&
+    Number.isFinite(queryArgs.week) &&
+    queryArgs.week > 0;
+
+  const { data, isFetching, isError, error } = useGetDriverEarningsSummaryQuery(
+    queryArgs,
+    {
+      skip: !hasValidFilter,
+    },
+  );
+
+  const summary = data?.data?.summary;
+  const filter = data?.data?.filter;
+  const currency = data?.data?.currency ?? "USD";
+
+  const totalEarningsText = formatCurrency(currency, summary?.earnings);
+  const onlineTimeText = summary?.onlineTime?.human ?? "--";
+  const ratingValue = Number(summary?.rating?.periodAverage ?? 0).toFixed(1);
+  const tripsValue = Number.isFinite(Number(summary?.trips))
+    ? String(summary?.trips)
+    : "--";
+  const dateText = formatDateRange(filter?.startAt, filter?.endAt);
+  const errorText = isError
+    ? getApiErrorMessage(error, "Could not load earnings summary.")
+    : "";
 
   return (
     <View style={styles.container}>
@@ -64,26 +160,33 @@ export default function EarningsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View>
-          <Text style={styles.dateText}>Mon, Jan 19, 2026</Text>
-          <Text style={styles.totalEarnings}>USD 55.00</Text>
+          <Text style={styles.dateText}>{dateText}</Text>
+          <Text style={styles.totalEarnings}>{totalEarningsText}</Text>
+          {isFetching && (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color={colors.main} />
+              <Text style={styles.loadingText}>Updating earnings...</Text>
+            </View>
+          )}
+          {Boolean(errorText) && <Text style={styles.errorText}>{errorText}</Text>}
         </View>
 
         <View style={styles.statsRow}>
           <StatCard
             icon="time-outline"
-            value="36min"
+            value={onlineTimeText}
             label="ONLINE"
             iconColor="#10B981"
           />
           <StatCard
             icon="star"
-            value="0.0"
+            value={ratingValue}
             label="RATING"
             iconColor="#FBBF24"
           />
           <StatCard
             icon="people-outline"
-            value="2"
+            value={tripsValue}
             label="TRIPS"
             iconColor="#9CA3AF"
           />
@@ -91,7 +194,6 @@ export default function EarningsScreen() {
 
         <View style={styles.mainEarningsCard}>
           <View style={styles.filterRow}>
-            {/* Weekly Dropdown */}
             <Dropdown
               style={styles.filterDropdown}
               selectedTextStyle={styles.filterTabText}
@@ -101,29 +203,27 @@ export default function EarningsScreen() {
               placeholder="Week"
               placeholderStyle={styles.filterTabText}
               value={selectedWeek}
-              onChange={(item) => setSelectedWeek(item.value)}
+              onChange={(item: DropdownOption) => setSelectedWeek(item.value)}
               renderRightIcon={() => (
                 <Ionicons name="chevron-down" size={14} color={colors.main} />
               )}
             />
 
-            {/* Month Dropdown */}
             <Dropdown
               style={styles.filterDropdown}
               selectedTextStyle={styles.filterTabText}
-              data={monthNames}
+              data={monthData}
               labelField="label"
               valueField="value"
               placeholder="Month"
               placeholderStyle={styles.filterTabText}
               value={selectedMonth}
-              onChange={(item) => setSelectedMonth(item.value)}
+              onChange={(item: DropdownOption) => setSelectedMonth(item.value)}
               renderRightIcon={() => (
                 <Ionicons name="chevron-down" size={14} color={colors.main} />
               )}
             />
 
-            {/* Year Dropdown */}
             <Dropdown
               style={styles.filterDropdown}
               selectedTextStyle={styles.filterTabText}
@@ -133,7 +233,7 @@ export default function EarningsScreen() {
               placeholder="Year"
               placeholderStyle={styles.filterTabText}
               value={selectedYear}
-              onChange={(item) => setSelectedYear(item.value)}
+              onChange={(item: DropdownOption) => setSelectedYear(item.value)}
               renderRightIcon={() => (
                 <Ionicons name="chevron-down" size={14} color={colors.main} />
               )}
@@ -142,7 +242,7 @@ export default function EarningsScreen() {
 
           <View>
             <Text style={styles.earningsLabel}>Earnings</Text>
-            <Text style={styles.earningsValueText}>USD 55.00</Text>
+            <Text style={styles.earningsValueText}>{totalEarningsText}</Text>
           </View>
         </View>
       </ScrollView>
@@ -170,6 +270,23 @@ const styles = StyleSheet.create({
   },
   dateText: { fontSize: moderateScale(14), color: "#4B5563" },
   totalEarnings: { fontSize: moderateScale(32), fontWeight: "bold" },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    marginTop: verticalScale(6),
+  },
+  loadingText: {
+    fontSize: moderateScale(12),
+    color: colors.main,
+    fontWeight: "500",
+  },
+  errorText: {
+    marginTop: verticalScale(6),
+    fontSize: moderateScale(12),
+    color: "#B91C1C",
+    fontWeight: "500",
+  },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -201,8 +318,6 @@ const styles = StyleSheet.create({
     gap: scale(8),
     marginBottom: verticalScale(15),
   },
-
-  // Custom style for the small pill dropdowns
   filterDropdown: {
     backgroundColor: "#A6AFFF",
     paddingHorizontal: scale(16),

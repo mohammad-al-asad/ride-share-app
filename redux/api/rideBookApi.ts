@@ -170,6 +170,32 @@ type CancelRideRequestResponse = {
   };
 };
 
+type SubmitTripRatingPayload = {
+  tripId: string;
+  body: {
+    stars: number;
+    comment?: string;
+  };
+};
+
+type SubmitTripRatingResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    message?: string;
+    rating?: {
+      tripId?: string;
+      fromUserId?: string;
+      toUserId?: string;
+      stars?: number;
+      comment?: string;
+      _id?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    };
+  };
+};
+
 export type DestinationDropoffPayload = {
   address: string;
   lng: number;
@@ -256,6 +282,130 @@ type ChangeTripDestinationResponse = {
   };
 };
 
+export type RiderTripHistoryCounterparty = {
+  _id: string;
+  name: string;
+  profileImage: string | null;
+  ratingAvg: number;
+  ratingCount: number;
+  emergency?: unknown | null;
+};
+
+export type RiderTripHistoryVehicle = {
+  _id: string;
+  brand: string;
+  model: string;
+  type: string;
+  size: string;
+  licensePlate: string;
+};
+
+export type RiderTripHistoryFare = {
+  currency: string;
+  estimatedFare?: number;
+  finalFare?: number;
+  totalFare?: number;
+  pricePerMile?: number;
+  pricePerMinute?: number;
+  driverGets?: number;
+  platformGets?: number;
+};
+
+export type RiderTripHistoryItem = {
+  _id: string;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  pickup: {
+    address: string;
+    point: {
+      type: "Point";
+      coordinates: [number, number];
+    };
+  };
+  dropoff: {
+    address: string;
+    point: {
+      type: "Point";
+      coordinates: [number, number];
+    };
+  };
+  pickupAddress?: string;
+  destination?: string;
+  distanceMiles?: number;
+  durationMinutes?: number;
+  fare?: RiderTripHistoryFare;
+  rideOption?: {
+    vehicleType?: string;
+    tier?: string;
+    size?: string;
+  };
+  cancellation?: {
+    canceledBy?: string;
+    reason?: string;
+    canceledAt?: string;
+    feeCharged?: number;
+    rule?: string;
+  };
+  driver?: RiderTripHistoryCounterparty;
+  vehicle?: RiderTripHistoryVehicle;
+  reviewGiven?: {
+    stars?: number;
+    comment?: string;
+    createdAt?: string;
+  } | null;
+};
+
+export type RiderTripsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    trips: RiderTripHistoryItem[];
+  };
+};
+
+export type RiderTripDetailsResponse = {
+  success: boolean;
+  message: string;
+  data: RiderTripHistoryItem & {
+    requestId?: string;
+    riderId?: string;
+    driverId?: RiderTripHistoryCounterparty | string;
+    vehicleId?: RiderTripHistoryVehicle | string;
+    statusHistory?: {
+      status: string;
+      at: string;
+      by: string;
+    }[];
+    otp?: {
+      hash?: string;
+      expiresAt?: string;
+      verifiedAt?: string;
+    };
+    pricing?: {
+      currency?: string;
+      estimatedMiles?: number;
+      estimatedMinutes?: number;
+      baseFare?: number;
+      pricePerMile?: number;
+      pricePerMinute?: number;
+      surgeMultiplier?: number;
+      driverSharePercent?: number;
+      estimatedFare?: number;
+      finalFare?: number;
+    };
+    payment?: {
+      _id?: string;
+      status?: string;
+      currency?: string;
+      totalFare?: number;
+      paidAt?: string | null;
+      failureMessage?: string | null;
+    };
+  };
+};
+
 export const rideBookApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getFareConfig: builder.query<FareConfigResponse, void>({
@@ -299,6 +449,18 @@ export const rideBookApi = baseApi.injectEndpoints({
     getActiveRide: builder.query<ActiveRideResponse, void>({
       query: () => ({
         url: "riderGetRide/active",
+        method: "GET",
+      }),
+    }),
+    getRiderTrips: builder.query<RiderTripsResponse, void>({
+      query: () => ({
+        url: "riderGetRide/trips",
+        method: "GET",
+      }),
+    }),
+    getRiderTripDetails: builder.query<RiderTripDetailsResponse, string>({
+      query: (tripId) => ({
+        url: `riderGetRide/trip/${tripId}/details`,
         method: "GET",
       }),
     }),
@@ -363,6 +525,16 @@ export const rideBookApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    submitTripRating: builder.mutation<
+      SubmitTripRatingResponse,
+      SubmitTripRatingPayload
+    >({
+      query: ({ tripId, body }) => ({
+        url: `riderGetRide/trip/${tripId}/rating`,
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -373,6 +545,8 @@ export const {
   useSavePaymentMethodMutation,
   useGetNearbyDriversMutation,
   useGetActiveRideQuery,
+  useGetRiderTripsQuery,
+  useGetRiderTripDetailsQuery,
   useGetRiderTripDriverProfileQuery,
   useCancelRiderTripMutation,
   useCancelRideRequestMutation,
@@ -380,4 +554,5 @@ export const {
   useCheckTripFareMutation,
   useChangeRideRequestDestinationMutation,
   useChangeTripDestinationMutation,
+  useSubmitTripRatingMutation,
 } = rideBookApi;

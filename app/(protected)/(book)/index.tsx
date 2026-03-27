@@ -57,15 +57,27 @@ type GeocodeResponse = {
 
 export default function LocationSelectionScreen() {
   const dispatch = useAppDispatch();
-  const { preserve } = useLocalSearchParams<{ preserve?: string }>();
+  const { preserve, pickupType: pickupTypeParam } = useLocalSearchParams<{
+    preserve?: string;
+    pickupType?: string;
+  }>();
   const preserveValue = Array.isArray(preserve) ? preserve[0] : preserve;
+  const pickupTypeParamValue = Array.isArray(pickupTypeParam)
+    ? pickupTypeParam[0]
+    : pickupTypeParam;
+  const requestedPickupType: PickupKind =
+    pickupTypeParamValue === "later" ? "later" : "now";
   const {
     pickup: storedPickup,
     dropoff: storedDropoff,
     schedule,
   } = useAppSelector((state) => state.rideBook.step1);
 
-  const [pickupType, setPickupType] = useState<PickupKind>(schedule.kind);
+  const [pickupType, setPickupType] = useState<PickupKind>(
+    pickupTypeParamValue === "now" || pickupTypeParamValue === "later"
+      ? pickupTypeParamValue
+      : schedule.kind,
+  );
   const [searchResults, setSearchResults] = useState<PlacePrediction[]>([]);
   const [pickup, setPickup] = useState<RideLocation | null>(storedPickup);
   const [dropoff, setDropoff] = useState<RideLocation | null>(storedDropoff);
@@ -89,13 +101,13 @@ export default function LocationSelectionScreen() {
 
       hasConsumedPreserveRef.current = false;
       dispatch(resetRideBook());
-      setPickupType("now");
+      setPickupType(requestedPickupType);
       setPickup(null);
       setDropoff(null);
       setPickUpText("");
       setDropOffText("");
       setSearchResults([]);
-    }, [dispatch, preserveValue]),
+    }, [dispatch, preserveValue, requestedPickupType]),
   );
 
   // Keep local state in sync when map-based selections update Redux.

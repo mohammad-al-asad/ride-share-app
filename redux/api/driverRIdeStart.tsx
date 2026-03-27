@@ -153,6 +153,14 @@ export type CompleteTripPayload = {
   tripId: string;
 };
 
+export type SubmitRiderReviewPayload = {
+  tripId: string;
+  body: {
+    stars: number;
+    comment?: string;
+  };
+};
+
 export type ArrivedAtPickupPayload = {
   tripId: string;
 };
@@ -207,6 +215,28 @@ export type CompleteTripResponse = {
   data: CompleteTripData;
 };
 
+export type SubmitRiderReviewResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    message?: string;
+    rating?: {
+      _tripId?: string;
+      _fromUserId?: string;
+      _toUserId?: string;
+      stars?: number;
+      comment?: string;
+      _id?: string;
+      createdAt?: string;
+      updatedAt?: string;
+    };
+    riderRatingSummary?: {
+      ratingAvg?: number;
+      ratingCount?: number;
+    };
+  };
+};
+
 export type DriverRiderProfile = {
   _id: string;
   name: string;
@@ -243,6 +273,252 @@ export type DriverTripRiderProfileResponse = {
     rider: DriverRiderProfile;
     reviews: DriverRiderReview[];
   };
+};
+
+export type DriverEarningsSummaryPayload = {
+  period: "week" | "month" | "year";
+  year: number;
+  month?: number;
+  week?: number;
+};
+
+export type DriverEarningsSummaryResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    filter: {
+      period: string;
+      year: number;
+      month?: number;
+      week?: number;
+      label: string;
+      startAt: string;
+      endAt: string;
+    };
+    currency: string;
+    summary: {
+      earnings: number;
+      trips: number;
+      paidTrips: number;
+      unpaidTrips: number;
+      totalDistanceMiles: number;
+      tripDuration: {
+        minutes: number;
+        hours: number;
+        human: string;
+      };
+      onlineTime: {
+        minutes: number;
+        hours: number;
+        human: string;
+      };
+      rating: {
+        periodAverage: number;
+        periodCount: number;
+        overallAverage: number;
+        overallCount: number;
+      };
+    };
+    overall: {
+      earnings: number;
+      trips: number;
+      totalDistanceMiles: number;
+      tripDuration: {
+        minutes: number;
+        hours: number;
+        human: string;
+      };
+      onlineTime: {
+        minutes: number;
+        hours: number;
+        human: string;
+      };
+      rating: {
+        average: number;
+        count: number;
+      };
+    };
+    availablePeriods: {
+      year: number;
+      months: {
+        month: number;
+        weeks: number[];
+      }[];
+    }[];
+  };
+};
+
+export type DriverEarningsTodayResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    filter: {
+      period: string;
+      label: string;
+      startAt: string;
+      endAt: string;
+      year?: number;
+      month?: number;
+      week?: number;
+    };
+    currency: string;
+    summary: {
+      earnings: number;
+      trips: number;
+      paidTrips: number;
+      unpaidTrips: number;
+      totalDistanceMiles: number;
+      tripDuration: {
+        minutes: number;
+        hours: number;
+        human: string;
+      };
+      onlineTime: {
+        minutes: number;
+        hours: number;
+        human: string;
+      };
+      rating?: {
+        periodAverage?: number;
+        periodCount?: number;
+        overallAverage?: number;
+        overallCount?: number;
+      };
+    };
+  };
+};
+
+export type DriverTripCounterparty = {
+  _id: string;
+  name: string;
+  profileImage: string | null;
+  ratingAvg: number;
+  ratingCount: number;
+  emergency?: unknown | null;
+};
+
+export type DriverTripVehicle = {
+  _id: string;
+  brand: string;
+  model: string;
+  type: string;
+  size: string;
+  licensePlate: string;
+};
+
+export type DriverTripFare = {
+  currency: string;
+  estimatedFare?: number;
+  finalFare?: number;
+  totalFare?: number;
+  driverGets?: number;
+  platformGets?: number;
+  pricePerMile?: number;
+  pricePerMinute?: number;
+};
+
+export type DriverTripHistoryItem = {
+  _id: string;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+  updatedAt: string;
+  pickup: DriverTripStop;
+  dropoff: DriverTripStop;
+  pickupAddress?: string;
+  destination?: string;
+  distanceMiles?: number;
+  durationMinutes?: number;
+  fare?: DriverTripFare;
+  pricing?: DriverTripPricing;
+  rideOption?: DriverTripRideOption;
+  cancellation?: {
+    canceledBy?: string;
+    reason?: string;
+    canceledAt?: string;
+    feeCharged?: number;
+    rule?: string;
+  };
+  rider?: DriverTripCounterparty;
+  vehicle?: DriverTripVehicle;
+  reviewGiven?: {
+    stars?: number;
+    comment?: string;
+    createdAt?: string;
+  } | null;
+};
+
+export type DriverTripsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    trips: DriverTripHistoryItem[];
+  };
+};
+
+type DriverTripSummaryData = {
+  message?: string;
+  trip?: DriverTripHistoryItem & {
+    requestId?: string;
+    riderId?: string;
+    driverId?: string;
+    vehicleId?: string;
+    statusHistory?: DriverTripStatusHistoryItem[];
+    otp?: {
+      hash?: string;
+      expiresAt?: string;
+      verifiedAt?: string;
+    };
+    payment?: {
+      _id?: string;
+      status?: string;
+      currency?: string;
+      totalFare?: number;
+      paidAt?: string | null;
+      failureMessage?: string | null;
+    };
+  };
+  paymentSummary?: {
+    totalFare?: number;
+    driverGets?: number;
+    platformGets?: number;
+    paymentStatus?: string;
+  };
+  autoCharge?: {
+    attempted?: boolean;
+    succeeded?: boolean;
+    status?: string;
+    failureMessage?: string;
+    paymentIntentId?: string | null;
+    paymentMethodId?: string | null;
+    stripeCustomerId?: string | null;
+    driverGets?: number;
+    platformGets?: number;
+  };
+};
+
+export type DriverTripSummaryResponse = {
+  success: boolean;
+  message: string;
+  data:
+    | DriverTripSummaryData
+    | (DriverTripHistoryItem & {
+        requestId?: string;
+        statusHistory?: DriverTripStatusHistoryItem[];
+        otp?: {
+          hash?: string;
+          expiresAt?: string;
+          verifiedAt?: string;
+        };
+        payment?: {
+          _id?: string;
+          status?: string;
+          currency?: string;
+          totalFare?: number;
+          paidAt?: string | null;
+          failureMessage?: string | null;
+        };
+      });
 };
 
 export const driverRideStartApi = baseApi.injectEndpoints({
@@ -313,6 +589,49 @@ export const driverRideStartApi = baseApi.injectEndpoints({
         method: "PATCH",
       }),
     }),
+    submitRiderReview: builder.mutation<
+      SubmitRiderReviewResponse,
+      SubmitRiderReviewPayload
+    >({
+      query: ({ tripId, body }) => ({
+        url: `driverHome/trip/${tripId}/rider-review`,
+        method: "POST",
+        body,
+      }),
+    }),
+    getDriverEarningsSummary: builder.query<
+      DriverEarningsSummaryResponse,
+      DriverEarningsSummaryPayload
+    >({
+      query: ({ period, year, month, week }) => ({
+        url: "driverHome/earnings-summary",
+        method: "GET",
+        params: {
+          period,
+          year,
+          ...(typeof month === "number" ? { month } : {}),
+          ...(typeof week === "number" ? { week } : {}),
+        },
+      }),
+    }),
+    getDriverEarningsToday: builder.query<DriverEarningsTodayResponse, void>({
+      query: () => ({
+        url: "driverHome/earnings-today",
+        method: "GET",
+      }),
+    }),
+    getDriverTrips: builder.query<DriverTripsResponse, void>({
+      query: () => ({
+        url: "driverHome/trips",
+        method: "GET",
+      }),
+    }),
+    getDriverTripSummary: builder.query<DriverTripSummaryResponse, string>({
+      query: (tripId) => ({
+        url: `driverHome/trip/${tripId}/summary`,
+        method: "GET",
+      }),
+    }),
     getTripRiderProfile: builder.query<DriverTripRiderProfileResponse, string>({
       query: (tripId) => ({
         url: `driverHome/trip/${tripId}/rider-profile`,
@@ -332,5 +651,10 @@ export const {
   useArrivedAtPickupMutation,
   useVerifyTripOtpMutation,
   useCompleteTripMutation,
+  useSubmitRiderReviewMutation,
+  useGetDriverEarningsSummaryQuery,
+  useGetDriverEarningsTodayQuery,
+  useGetDriverTripsQuery,
+  useGetDriverTripSummaryQuery,
   useGetTripRiderProfileQuery,
 } = driverRideStartApi;
