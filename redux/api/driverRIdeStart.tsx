@@ -521,6 +521,43 @@ export type DriverTripSummaryResponse = {
       });
 };
 
+export type GetMyDriverReviewsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    driver: {
+      _id: string;
+      name: string;
+      profileImage: string | null;
+      ratingAvg: number;
+      ratingCount: number;
+      tripsCount: number;
+      yearsOnPlatform: number;
+    };
+    vehicle: {
+      _id: string;
+      brand: string;
+      model: string;
+      type: string;
+      size: string;
+      licensePlate: string;
+    } | null;
+    reviews: {
+      _id: string;
+      tripId: string;
+      stars: number;
+      comment: string;
+      createdAt: string;
+      reviewer: {
+        _id: string;
+        name: string;
+        profileImage: string | null;
+        role: "driver" | "rider";
+      };
+    }[];
+  };
+};
+
 export const driverRideStartApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDriverHome: builder.query<DriverHomeResponse, void>({
@@ -638,6 +675,12 @@ export const driverRideStartApi = baseApi.injectEndpoints({
         method: "GET",
       }),
     }),
+    getMyDriverReviews: builder.query<GetMyDriverReviewsResponse, void>({
+      query: () => ({
+        url: "driverHome/my-reviews",
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -657,4 +700,5 @@ export const {
   useGetDriverTripsQuery,
   useGetDriverTripSummaryQuery,
   useGetTripRiderProfileQuery,
+  useGetMyDriverReviewsQuery,
 } = driverRideStartApi;

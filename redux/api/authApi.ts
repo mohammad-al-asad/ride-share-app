@@ -138,6 +138,46 @@ type ResetPasswordResponse = {
   };
 };
 
+export type LegalContentItem = {
+  _id: string;
+  type: string;
+  title: string;
+  contentHtml: string;
+  contentDelta: any;
+  plainText: string;
+  isPublished: boolean;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GetLegalContentResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    type: string;
+    items: LegalContentItem[];
+  };
+};
+
+export type CreateSupportTicketPayload = {
+  title: string;
+  message: string;
+  againstUserId?: string | null;
+  tripId?: string | null;
+  role: "rider" | "driver" | string;
+};
+
+export type CreateSupportTicketResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    message: string;
+    ticket: any;
+  };
+};
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     register: builder.mutation<RegisterResponse, RegisterPayload>({
@@ -235,6 +275,22 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    getLegalContent: builder.query<GetLegalContentResponse, string>({
+      query: (type) => ({
+        url: `legal-content/${type}`,
+        method: "GET",
+      }),
+    }),
+    createSupportTicket: builder.mutation<
+      CreateSupportTicketResponse,
+      CreateSupportTicketPayload
+    >({
+      query: ({ role, ...body }) => ({
+        url: role === "driver" ? "driverHome/support-ticket" : "riderGetRide/support-ticket",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -251,4 +307,6 @@ export const {
   useChangePasswordMutation,
   useVerifyResetOtpMutation,
   useResetPasswordMutation,
+  useGetLegalContentQuery,
+  useCreateSupportTicketMutation,
 } = authApi;

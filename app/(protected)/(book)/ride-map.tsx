@@ -1,4 +1,4 @@
-﻿import { MarkerCircle } from "@/components/AnimatedMarker";
+import { MarkerCircle } from "@/components/AnimatedMarker";
 import DriverCard from "@/components/DriverCard";
 import { MarkerTriangle } from "@/components/Markers";
 import RoadPolyline from "@/components/RoadPolyline";
@@ -11,6 +11,7 @@ import {
 } from "@/redux/api/rideBookApi";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
+  clearActiveRide,
   setRideDriverProgress,
   setRideMatchedData,
 } from "@/redux/slices/rideBookSlice";
@@ -122,12 +123,40 @@ export default function TripProgressScreen() {
       dispatch(setRideDriverProgress(payload?.progress ?? null));
     };
 
+    const handleTripCancelled = (payload: any) => {
+      const cancelledBy = payload?.cancelledBy ?? payload?.cancellation?.canceledBy;
+      // Only handle if the driver was the one who cancelled (rider's own cancel is
+      // handled locally by the REST mutation's Redux extraReducer).
+      if (cancelledBy === "driver") {
+        dispatch(clearActiveRide());
+        Alert.alert(
+          "Ride cancelled",
+          "Your driver has cancelled the trip. Please book a new ride.",
+          [{ text: "OK", onPress: () => router.replace("/(protected)/(tab)" as any) }],
+        );
+      }
+    };
+
+    const handleTripCompleted = (payload: any) => {
+      const tripId = payload?.tripId ?? payload?.trip?._id;
+      dispatch(clearActiveRide());
+      router.replace(
+        tripId
+          ? (`/(protected)/ride-details/ride-status?tripId=${tripId}` as any)
+          : ("/(protected)/ride-details/ride-status" as any),
+      );
+    };
+
     socket.on("ride-request:matched", handleRideMatched);
     socket.on("trip:driver-location", handleDriverLocation);
+    socket.on("trip:cancelled", handleTripCancelled);
+    socket.on("trip:completed", handleTripCompleted);
 
     return () => {
       socket.off("ride-request:matched", handleRideMatched);
       socket.off("trip:driver-location", handleDriverLocation);
+      socket.off("trip:cancelled", handleTripCancelled);
+      socket.off("trip:completed", handleTripCompleted);
     };
   }, [authToken, dispatch]);
 

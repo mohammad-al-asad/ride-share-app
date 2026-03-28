@@ -298,6 +298,13 @@ const rideBookSlice = createSlice({
     ) => {
       state.driverProgress = action.payload;
     },
+    clearActiveRide: (state) => {
+      state.activeTrip = null;
+      state.latestRideRequest = null;
+      state.matchedDriver = null;
+      state.matchedVehicle = null;
+      state.driverProgress = null;
+    },
     resetRideBook: (state) => {
       state.step1 = {
         pickup: null,
@@ -435,6 +442,7 @@ export const {
   setLatestRideRequest,
   setRideMatchedData,
   setRideDriverProgress,
+  clearActiveRide,
   resetRideBook,
 } = rideBookSlice.actions;
 

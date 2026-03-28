@@ -406,6 +406,33 @@ export type RiderTripDetailsResponse = {
   };
 };
 
+type GetMyReviewsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    rider: {
+      _id: string;
+      name: string;
+      profileImage: string | null;
+      ratingAvg: number;
+      ratingCount: number;
+      savedPlacesCount: number;
+    };
+    reviews: {
+      _id: string;
+      stars: number;
+      comment: string;
+      createdAt: string;
+      reviewer: {
+        _id: string;
+        name: string;
+        profileImage: string | null;
+        role: "driver" | "rider";
+      };
+    }[];
+  };
+};
+
 export const rideBookApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getFareConfig: builder.query<FareConfigResponse, void>({
@@ -535,6 +562,12 @@ export const rideBookApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    getMyReviews: builder.query<GetMyReviewsResponse, void>({
+      query: () => ({
+        url: "riderGetRide/my-reviews",
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -555,4 +588,5 @@ export const {
   useChangeRideRequestDestinationMutation,
   useChangeTripDestinationMutation,
   useSubmitTripRatingMutation,
+  useGetMyReviewsQuery,
 } = rideBookApi;

@@ -224,6 +224,40 @@ export default function HomeScreen() {
     };
   }, [authToken, dispatch, hasUser, pendingRequestId]);
 
+  // ── Real-time trip lifecycle events ────────────────────────────────────────
+  useEffect(() => {
+    if (!authToken || !hasUser) {
+      return;
+    }
+
+    const socket = connectRealtimeSocket(authToken);
+    if (!socket) {
+      return;
+    }
+
+    const handleTripCancelled = (payload: any) => {
+      const cancelledBy =
+        payload?.cancelledBy ?? payload?.cancellation?.canceledBy;
+      // Only react when the rider cancelled (driver's own cancel is already
+      // handled synchronously by the REST mutation → Redux extraReducer).
+      if (cancelledBy === "rider") {
+        dispatch(
+          setDriverRideStatus({ activeTrip: null, isBusy: false }),
+        );
+        Alert.alert(
+          "Ride cancelled",
+          "The rider has cancelled the trip.",
+        );
+      }
+    };
+
+    socket.on("trip:cancelled", handleTripCancelled);
+
+    return () => {
+      socket.off("trip:cancelled", handleTripCancelled);
+    };
+  }, [authToken, dispatch, hasUser]);
+
   useEffect(() => {
     if (storedDriverLocation) {
       setDriverLocation(

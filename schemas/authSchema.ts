@@ -48,3 +48,12 @@ export type LoginType = z.infer<typeof loginSchema>;
 export type UpdateProfileInfoType = z.infer<typeof updateProfileInfoSchema>;
 export type ChangePasswordType = z.infer<typeof changePasswordSchema>;
 export type ResetPasswordType = z.infer<typeof resetPasswordSchema>;
+
+export const supportTicketSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters").max(100, "Title is too long"),
+  message: z.string().min(10, "Message must be at least 10 characters").max(1000, "Message is too long"),
+  againstUserId: z.string().optional().nullable(),
+  tripId: z.string().optional().nullable(),
+});
+
+export type SupportTicketType = z.infer<typeof supportTicketSchema>;

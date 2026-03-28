@@ -23,6 +23,7 @@ import {
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
 type TripPerson = {
+  _id?: string;
   name?: string;
   profileImage?: string | null;
   ratingAvg?: number;
@@ -411,7 +412,17 @@ export default function RideDetailsScreen() {
           <Text style={styles.sectionHeader}>Help</Text>
           <Pressable
             style={styles.helpButton}
-            onPress={() => router.push("/(protected)/(account)/support")}
+            onPress={() =>
+              router.push({
+                pathname: "/(protected)/(account)/support",
+                params: {
+                  tripId: tripId,
+                  againstUserId: counterparty?._id,
+                  againstUserName: counterparty?.name,
+                  againstUserRole: counterpartRole,
+                },
+              })
+            }
           >
             <MaterialCommunityIcons name="headset" size={22} color="#1A1A1A" />
             <Text style={styles.helpButtonText}>Customer Support</Text>

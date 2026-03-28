@@ -109,9 +109,8 @@ export default {
       reactCompiler: true,
     },
     extra: {
-      router: {},
       eas: {
-        projectId: "ccd037c7-d50b-46c9-a085-2d830f445037",
+        projectId: "084efe4a-1ac4-48bd-bf97-e2a07c1d0b10",
       },
     },
   },
