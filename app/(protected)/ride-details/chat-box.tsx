@@ -21,14 +21,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { useAnimatedKeyboard, useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -96,6 +95,10 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList<TripChatMessage> | null>(null);
   const [inputText, setInputText] = useState("");
+  const keyboard = useAnimatedKeyboard();
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    paddingBottom: keyboard.height.value,
+  }));
   const [messages, setMessages] = useState<TripChatMessage[]>([]);
 
   const authToken = useAppSelector((state: RootState) => state.auth.token);
@@ -419,12 +422,8 @@ export default function ChatScreen() {
     );
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={0}
-    >
+  const chatContent = (
+    <>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -477,7 +476,13 @@ export default function ChatScreen() {
           <Ionicons name="send" size={20} color="#FFD700" />
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </>
+  );
+
+  return (
+    <Animated.View style={[styles.container, animatedContainerStyle]}>
+      {chatContent}
+    </Animated.View>
   );
 }
 

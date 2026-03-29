@@ -11,6 +11,7 @@ import { moderateScale, scale } from "react-native-size-matters";
 
 type Props = {
   onAccept: () => void;
+  onDecline?: () => void;
   isLoading?: boolean;
   rideLabel?: string;
   fare?: number;
@@ -21,6 +22,7 @@ type Props = {
 
 const RequestCard = ({
   onAccept,
+  onDecline,
   isLoading = false,
   rideLabel = "PREMIUM VAN (COMPACT)",
   fare = 5.54,
@@ -30,7 +32,7 @@ const RequestCard = ({
 }: Props) => {
   return (
     <View style={styles.requestCard}>
-      <TouchableOpacity style={styles.closeButton}>
+      <TouchableOpacity style={styles.closeButton} onPress={onDecline}>
         <Ionicons name="close" size={24} color="#333" />
       </TouchableOpacity>
 

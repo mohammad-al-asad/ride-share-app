@@ -224,7 +224,7 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
         <BottomSheetView style={styles.bottomSheet}>
           <SelectedRideCard item={selected} onClear={() => setSelected(null)} />
           <CustomButton
-            style={{ marginTop: verticalScale(20) }}
+            style={{ marginTop: verticalScale(10) }}
             text={`Choose ${selected.category} ${selected.name} ${
               selected?.sub ? selected.sub : ""
             }`}
@@ -250,6 +250,7 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
             <CustomButton
               style={{
                 marginTop: verticalScale(10),
+                marginBottom: verticalScale(20),
               }}
               text={`Select ${focused ? focused.name + " " + (focused?.sub ? focused.sub : "") : ""}`}
               onClick={() => {

@@ -389,6 +389,37 @@ export default function HomeScreen() {
     }
   }, [acceptRideRequest, pendingRequestId]);
 
+  const handleDeclineRequest = useCallback(() => {
+    if (!pendingRequestId) {
+      return;
+    }
+
+    Alert.alert(
+      "Decline ride request",
+      "Are you sure you want to decline this ride request?",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, decline",
+          style: "destructive",
+          onPress: () => {
+            const socket = authToken
+              ? connectRealtimeSocket(authToken)
+              : null;
+
+            if (socket?.connected) {
+              socket.emit("ride-request:decline", {
+                requestId: pendingRequestId,
+              });
+            }
+
+            dispatch(setDriverRideStatus({ activeRideRequest: null }));
+          },
+        },
+      ],
+    );
+  }, [authToken, dispatch, pendingRequestId]);
+
   return (
     <View style={styles.mainContainer}>
       {!activeTrip && <TopMapControlls driverLocation={driverLocation} />}
@@ -450,6 +481,7 @@ export default function HomeScreen() {
       {pendingRequestId && !activeTrip && requestPreview && (
         <RequestCard
           onAccept={handleAcceptRequest}
+          onDecline={handleDeclineRequest}
           isLoading={isAcceptingRideRequest}
           rideLabel={requestPreview.rideLabel}
           fare={requestPreview.fare}

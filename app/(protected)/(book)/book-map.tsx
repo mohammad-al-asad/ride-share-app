@@ -215,7 +215,7 @@ export default function ChooseRideScreen() {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={[height * 0.07, height * 0.78]}
+          snapPoints={[height * 0.07, height * 0.90]}
           enableDynamicSizing={false}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"

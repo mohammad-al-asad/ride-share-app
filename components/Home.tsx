@@ -6,7 +6,8 @@ import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -73,7 +74,9 @@ export default function HomeScreen() {
   );
   const activeTrip = useAppSelector((state: RootState) => state.rideBook.activeTrip);
   const userName = user?.name?.trim() || "User";
-  useGetActiveRideQuery(undefined, {
+  const {
+    refetch: refetchActiveRide,
+  } = useGetActiveRideQuery(undefined, {
     skip: !user || !authToken,
     refetchOnMountOrArgChange: true,
   });
@@ -81,6 +84,14 @@ export default function HomeScreen() {
     skip: !user || !authToken || user.role === "driver",
     refetchOnMountOrArgChange: true,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user && authToken) {
+        refetchActiveRide();
+      }
+    }, [user, authToken, refetchActiveRide]),
+  );
 
   const recentTrips = useMemo(() => {
     const trips = riderTripsQuery.data?.data?.trips ?? [];
