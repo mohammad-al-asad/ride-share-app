@@ -7,7 +7,7 @@ export const registerSchema = z.object({
     .max(20, "Name must be less than 20 chars"),
   email: z.email("Invalid email"),
   password: z.string().min(6, "Password must be at least 6 chars"),
-  phone: z.string().regex(/^01\d{9}$/, "Phone must be 11 digits"),
+  phone: z.string().length(10, "Phone must be 10 digits"),
 });
 
 export const roleSchema = z.enum(["driver", "rider"]);

@@ -14,7 +14,7 @@ export default {
         NSLocationWhenInUseUsageDescription:
           "We need your location to provide pickup suggestions",
       },
-      bundleIdentifier: "com.app.ma3",
+      bundleIdentifier: "co.ma3llc",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_MAP_API_KEY,
       },
@@ -32,7 +32,7 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: "com.app.ma3",
+      package: "co.ma3llc",
       permissions: [
         "ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
