@@ -157,13 +157,13 @@ export default function App() {
             onClick={() => router.replace("/(auth)/sign-up")}
           />
 
-          <TouchableOpacity style={styles.googleBtn}>
+          {/* <TouchableOpacity style={styles.googleBtn}>
             <Image
               style={{ width: 24, height: 24 }}
               source={require("../assets/icons/Google.svg")}
             />
             <Text style={styles.outlineText}>Continue With Google</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </Animated.View>
       )}
     </Animated.View>

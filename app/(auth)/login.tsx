@@ -177,7 +177,7 @@ export default function LoginScreen() {
               isLoading={isLoading}
             />
 
-            <View style={styles.dividerArea}>
+            {/* <View style={styles.dividerArea}>
               <View style={styles.line} />
               <Text style={styles.orText}>OR</Text>
               <View style={styles.line} />
@@ -192,7 +192,7 @@ export default function LoginScreen() {
                 style={styles.googleIcon}
               />
               <Text style={styles.googleText}>Continue With Google</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           <View style={styles.footer}>

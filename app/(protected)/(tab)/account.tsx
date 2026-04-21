@@ -196,14 +196,14 @@ export default function ProfileScreen() {
               router.push("/(auth)/change-password");
             }}
           />
-          <View style={styles.divider} />
+          {/* <View style={styles.divider} />
           <SettingItem
             icon="checkmark-circle-outline"
             label="Linked account"
             onPress={() => {
               router.push("/(protected)/(account)/linked-account");
             }}
-          />
+          /> */}
         </View>
 
         {/* Ratings Group */}
