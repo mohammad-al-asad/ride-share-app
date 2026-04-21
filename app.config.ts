@@ -14,6 +14,10 @@ export default {
         ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription:
           "We need your location to provide pickup suggestions",
+        NSPhotoLibraryUsageDescription:
+          "This app requires access to your photo library to let you upload profile pictures and identity documents.",
+        NSCameraUsageDescription:
+          "This app requires access to your camera to let you take profile pictures and scan identity documents.",
       },
       bundleIdentifier: "co.ma3llc",
       config: {
