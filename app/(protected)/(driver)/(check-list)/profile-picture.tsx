@@ -43,9 +43,9 @@ export default function TakeProfilePhotoScreen() {
   const hasExistingImage = Boolean(existingImage);
   const hasSelectedImage = Boolean(image);
 
-  async function openPicker() {
+  async function openCamera() {
     try {
-      const result = await ImagePicker.openPicker({
+      const result = await ImagePicker.openCamera({
         mediaType: "photo",
         cropping: true,
         width: 400,
@@ -59,8 +59,8 @@ export default function TakeProfilePhotoScreen() {
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code !== "E_PICKER_CANCELLED") {
-        Alert.alert("Image error", "Could not select image. Please try again.");
-        console.log("Profile image pick failed:", err);
+        Alert.alert("Camera error", "Could not capture image. Please try again.");
+        console.log("Profile image capture failed:", err);
       }
     }
   }
@@ -148,7 +148,7 @@ export default function TakeProfilePhotoScreen() {
                   ? "Retake Photo"
                   : "Upload Photo"
             }
-            onClick={hasSelectedImage ? handleSave : openPicker}
+            onClick={hasSelectedImage ? handleSave : openCamera}
             type="main"
             isLoading={isUploading}
           />

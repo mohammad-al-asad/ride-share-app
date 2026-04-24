@@ -96,9 +96,9 @@ export default function ProfileScreen() {
     }
   };
 
-  const pickImage = async () => {
+  const takeImage = async () => {
     try {
-      const result = await ImagePicker.openPicker({
+      const result = await ImagePicker.openCamera({
         mediaType: "photo",
         cropping: true,
         width: 400,
@@ -112,8 +112,8 @@ export default function ProfileScreen() {
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code !== "E_PICKER_CANCELLED") {
-        Alert.alert("Image error", "Could not select image. Please try again.");
-        console.log("Image pick failed:", err);
+        Alert.alert("Camera error", "Could not capture image. Please try again.");
+        console.log("Image capture failed:", err);
       }
     }
   };
@@ -152,7 +152,7 @@ export default function ProfileScreen() {
               style={styles.cameraButton}
               onPress={
                 user?.role === "rider"
-                  ? pickImage
+                  ? takeImage
                   : () =>
                       router.push(
                         "/(protected)/(driver)/(check-list)/profile-picture",

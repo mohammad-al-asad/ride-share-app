@@ -17,10 +17,11 @@ import {
 } from "@/redux/slices/rideBookSlice";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Alert,
+  BackHandler,
   Dimensions,
   StyleSheet,
   Text,
@@ -329,6 +330,26 @@ export default function TripProgressScreen() {
     latestRideRequest?._id,
   ]);
 
+  const handleBackPress = useCallback(() => {
+    router.replace("/(protected)/(tab)" as any);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onHardwareBackPress = () => {
+        handleBackPress();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onHardwareBackPress,
+      );
+
+      return () => subscription.remove();
+    }, [handleBackPress]),
+  );
+
   const onCancelPress = useCallback(() => {
     if (isCanceling) {
       return;
@@ -373,7 +394,7 @@ export default function TripProgressScreen() {
 
       <TouchableOpacity
         style={styles.topCircleButton}
-        onPress={() => router.back()}
+        onPress={handleBackPress}
       >
         <Ionicons name="chevron-back" size={24} color="black" />
       </TouchableOpacity>

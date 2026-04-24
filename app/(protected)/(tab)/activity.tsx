@@ -201,7 +201,7 @@ export default function ActivityScreen() {
       </View>
 
       <View style={styles.content}>
-        {isDriver && (
+        {/* {isDriver && (
           <View style={styles.toggleContainer}>
             <TouchableOpacity
               style={[
@@ -233,9 +233,9 @@ export default function ActivityScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
 
-        {activeTab === "notifications" && (
+        {/* {activeTab === "notifications" && (
           <ScrollView
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -257,7 +257,7 @@ export default function ActivityScreen() {
               ))}
             </View>
           </ScrollView>
-        )}
+        )} */}
 
         {activeTab === "history" && (
           <View style={styles.historyContainer}>

@@ -139,6 +139,8 @@ const VerifyOtpScreen: React.FC = () => {
 
     try {
       const response = await sendVerification({ email: emailValue }).unwrap();
+      console.log("resend", response);
+      
       Alert.alert(
         "OTP sent",
         response?.data?.message ?? "Verification code sent.",

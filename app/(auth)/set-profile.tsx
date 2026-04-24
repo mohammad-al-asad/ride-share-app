@@ -31,9 +31,9 @@ export default function AddPhotoScreen() {
   const existingToken = useAppSelector((state: RootState) => state.auth.token);
   const previewUri = selectedImage?.path ?? existingUser?.profileImage;
 
-  const pickImage = async () => {
+  const takeImage = async () => {
     try {
-      const result = await ImagePicker.openPicker({
+      const result = await ImagePicker.openCamera({
         mediaType: "photo",
         cropping: true,
         width: 400,
@@ -47,8 +47,8 @@ export default function AddPhotoScreen() {
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code !== "E_PICKER_CANCELLED") {
-        Alert.alert("Image error", "Could not select image. Please try again.");
-        console.log("Image pick failed:", err);
+        Alert.alert("Camera error", "Could not capture image. Please try again.");
+        console.log("Image capture failed:", err);
       }
     }
   };
@@ -129,7 +129,7 @@ export default function AddPhotoScreen() {
             <TouchableOpacity
               style={styles.cameraButton}
               activeOpacity={0.8}
-              onPress={pickImage}
+              onPress={takeImage}
               disabled={isUploading}
             >
               <Ionicons name="camera-outline" size={20} color="black" />

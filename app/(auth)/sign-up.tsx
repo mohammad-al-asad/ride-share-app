@@ -45,19 +45,22 @@ export default function SignUpScreen() {
         ...values,
       }).unwrap();
 
-      const user = registerResponse?.data?.user;
-      if (user) {
-        await dispatch(
-          persistCredentials({
-            user: {
-              id: user._id,
-              name: user.name,
-              email: user.email,
-              phone: user.phone,
-            },
-          }),
-        ).unwrap();
+      const responseData = registerResponse?.data;
+      if (!responseData || !responseData.user) {
+        throw new Error("Registration succeeded but user data is missing.");
       }
+
+      const user = responseData.user;
+      await dispatch(
+        persistCredentials({
+          user: {
+            id: user._id,
+            name: user.name ?? values.name,
+            email: user.email ?? values.email,
+            phone: user.phone ?? values.phone,
+          },
+        }),
+      ).unwrap();
       console.log("OTP: ", registerResponse?.data?.user?.otp);
 
       router.replace({

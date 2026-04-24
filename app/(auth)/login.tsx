@@ -43,7 +43,12 @@ export default function LoginScreen() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       const response = await login(values).unwrap();
-      const { accessToken, refreshToken, user } = response.data;
+      const responseData = response?.data;
+      if (!responseData || !responseData.user) {
+        throw new Error("Invalid response from server.");
+      }
+
+      const { accessToken, refreshToken, user } = responseData;
       const normalizedRole = (user.role ?? "").trim();
       const hasSelectedRole =
         normalizedRole === "rider" || normalizedRole === "driver";

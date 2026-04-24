@@ -251,10 +251,23 @@ export default function HomeScreen() {
       }
     };
 
+    const handleDestinationChanged = (payload: any) => {
+      console.log("trip:destination-changed", payload);
+      if (payload?.trip) {
+        dispatch(
+          setDriverRideStatus({
+            activeTrip: payload.trip,
+          }),
+        );
+      }
+    };
+
     socket.on("trip:cancelled", handleTripCancelled);
+    socket.on("trip:destination-changed", handleDestinationChanged);
 
     return () => {
       socket.off("trip:cancelled", handleTripCancelled);
+      socket.off("trip:destination-changed", handleDestinationChanged);
     };
   }, [authToken, dispatch, hasUser]);
 

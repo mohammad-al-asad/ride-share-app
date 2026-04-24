@@ -8,7 +8,13 @@ import { useAppSelector } from "@/redux/hooks";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   BackHandler,
   Dimensions,
@@ -33,14 +39,9 @@ export default function ChooseRideScreen() {
     useGetNearbyDriversMutation();
   const { pickup, dropoff } = useAppSelector((state) => state.rideBook.step1);
 
-  const handleBackPress = useCallback(() => {
-    if (ispayment) {
-      setIspayment(false);
-      return;
-    }
-
-    router.back();
-  }, [ispayment]);
+  const handleBackPress = () => {
+    router.replace("/(protected)/(book)");
+  };
 
   const pickupCoordinate = useMemo(
     () => (pickup ? { latitude: pickup.lat, longitude: pickup.lng } : null),
@@ -74,8 +75,11 @@ export default function ChooseRideScreen() {
         .filter(
           (
             driver,
-          ): driver is { driverId: string; latitude: number; longitude: number } =>
-            driver !== null,
+          ): driver is {
+            driverId: string;
+            latitude: number;
+            longitude: number;
+          } => driver !== null,
         ),
     [nearbyDriversResponse?.data?.drivers],
   );
@@ -123,7 +127,11 @@ export default function ChooseRideScreen() {
     }).catch((error) => {
       console.log("Nearby drivers fetch failed:", error);
     });
-  }, [getNearbyDrivers, pickupCoordinate?.latitude, pickupCoordinate?.longitude]);
+  }, [
+    getNearbyDrivers,
+    pickupCoordinate?.latitude,
+    pickupCoordinate?.longitude,
+  ]);
 
   useEffect(() => {
     if (!pickupCoordinate || !dropoffCoordinate || !mapRef.current) {
@@ -144,11 +152,8 @@ export default function ChooseRideScreen() {
   useFocusEffect(
     useCallback(() => {
       const onHardwareBackPress = () => {
-        if (ispayment) {
-          setIspayment(false);
-          return true;
-        }
-        return false;
+        handleBackPress();
+        return true;
       };
 
       const subscription = BackHandler.addEventListener(
@@ -215,7 +220,7 @@ export default function ChooseRideScreen() {
         <BottomSheet
           ref={bottomSheetRef}
           index={1}
-          snapPoints={[height * 0.07, height * 0.90]}
+          snapPoints={[height * 0.07, height * 0.9]}
           enableDynamicSizing={false}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"

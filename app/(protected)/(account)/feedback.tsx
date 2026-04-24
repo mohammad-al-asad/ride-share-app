@@ -38,12 +38,14 @@ const Feedback = () => {
         reviews.map((review) => (
           <ReviewCard
             key={review._id}
-            name={review.reviewer.name}
-            role={review.reviewer.role === "driver" ? "Driver" : "Rider"}
-            rating={review.stars.toFixed(1)}
-            comment={review.comment || "No comment"}
+            name={review.reviewer?.name ?? "Anonymous User"}
+            role={
+              review.reviewer?.role === "driver" ? "Driver" : "Rider"
+            }
+            rating={Number(review.stars ?? 0).toFixed(1)}
+            comment={review.comment || "No comment provided."}
             avatar={
-              review.reviewer.profileImage
+              review.reviewer?.profileImage
                 ? { uri: review.reviewer.profileImage }
                 : require("@/assets/images/demo-profile.png")
             }

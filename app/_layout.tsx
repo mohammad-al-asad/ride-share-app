@@ -1,3 +1,4 @@
+import { useAppSelector } from "@/redux/hooks";
 import { store } from "@/redux/store";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { StripeProvider } from "@stripe/stripe-react-native";
@@ -8,13 +9,24 @@ import { Provider } from "react-redux";
 
 SplashScreen.preventAutoHideAsync();
 
+
+function StripeWrapper({ children }: { children: React.ReactNode }) {
+  const user = useAppSelector((state) => state.auth.user);
+  const stripeKey =
+    user?.email === "maasad11914@gmail.com"
+      ? process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST
+      : process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_PROD;
+
+  return (
+    <StripeProvider publishableKey={stripeKey || ""}>{children}</StripeProvider>
+  );
+}
+
 export default function RootLayout() {
   return (
     <Provider store={store}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StripeProvider
-          publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
-        >
+        <StripeWrapper>
           <BottomSheetModalProvider>
             <StatusBar barStyle="dark-content" />
             <Stack
@@ -23,7 +35,7 @@ export default function RootLayout() {
               }}
             />
           </BottomSheetModalProvider>
-        </StripeProvider>
+        </StripeWrapper>
       </GestureHandlerRootView>
     </Provider>
   );
