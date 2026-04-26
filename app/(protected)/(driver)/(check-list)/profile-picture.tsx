@@ -146,7 +146,7 @@ export default function TakeProfilePhotoScreen() {
                 ? "Save"
                 : hasExistingImage
                   ? "Retake Photo"
-                  : "Upload Photo"
+                  : "Take Photo"
             }
             onClick={hasSelectedImage ? handleSave : openCamera}
             type="main"

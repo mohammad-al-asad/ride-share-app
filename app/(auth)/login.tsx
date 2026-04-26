@@ -1,7 +1,7 @@
 import AuthBackground from "@/components/AuthBackground";
 import CustomButton from "@/components/CustomButton";
 import { colors } from "@/config/colors";
-import { useLoginMutation } from "@/redux/api/authApi";
+import { useLoginMutation, useSendVerificationMutation } from "@/redux/api/authApi";
 import { useAppDispatch } from "@/redux/hooks";
 import { persistCredentials } from "@/redux/slices/authSlice";
 import { loginSchema, LoginType } from "@/schemas/authSchema";
@@ -26,6 +26,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [login, { isLoading }] = useLoginMutation();
+  const [sendVerification] = useSendVerificationMutation();
   const isIOS = Platform.OS === "ios";
 
   const {
@@ -71,6 +72,12 @@ export default function LoginScreen() {
       ).unwrap();
 
       if (!isEmailVerified) {
+        try {
+          await sendVerification({ email: user.email }).unwrap();
+        } catch (error) {
+          console.log("Error sending verification email:", error);
+        }
+
         router.replace({
           pathname: "/(auth)/verify-otp",
           params: {

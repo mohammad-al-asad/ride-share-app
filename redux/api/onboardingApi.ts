@@ -137,18 +137,21 @@ export const onboardingApi = baseApi.injectEndpoints({
         url: "driverOnboarding/status",
         method: "GET",
       }),
+      providesTags: ["DriverOnboarding"],
     }),
     getDriverLicensePhotos: builder.query<DriverLicensePhotosResponse, void>({
       query: () => ({
         url: "driverOnboardingRead/license-photos",
         method: "GET",
       }),
+      providesTags: ["DriverOnboarding"],
     }),
     getVehicleInsurance: builder.query<DriverDocumentReadResponse, void>({
       query: () => ({
         url: "driverOnboardingRead/vehicle-insurance",
         method: "GET",
       }),
+      providesTags: ["DriverOnboarding"],
     }),
     getVehicleRegistration: builder.query<
       DriverVehicleRegistrationReadResponse,
@@ -158,18 +161,21 @@ export const onboardingApi = baseApi.injectEndpoints({
         url: "driverOnboardingRead/vehicle-registration",
         method: "GET",
       }),
+      providesTags: ["DriverOnboarding"],
     }),
     getStripeInfo: builder.query<StripeInfoResponse, void>({
       query: () => ({
         url: "driverOnboardingRead/stripe",
         method: "GET",
       }),
+      providesTags: ["DriverOnboarding"],
     }),
     getVehicleInfo: builder.query<VehicleInfoResponse, void>({
       query: () => ({
         url: "driverOnboardingRead/vehicle-info",
         method: "GET",
       }),
+      providesTags: ["DriverOnboarding"],
     }),
     uploadDriverLicenseFront: builder.mutation<UploadDriverDocumentResponse, FormData>(
       {
@@ -178,6 +184,7 @@ export const onboardingApi = baseApi.injectEndpoints({
           method: "POST",
           body,
         }),
+        invalidatesTags: ["DriverOnboarding"],
       },
     ),
     uploadDriverLicenseBack: builder.mutation<UploadDriverDocumentResponse, FormData>(
@@ -187,6 +194,7 @@ export const onboardingApi = baseApi.injectEndpoints({
           method: "POST",
           body,
         }),
+        invalidatesTags: ["DriverOnboarding"],
       },
     ),
     uploadVehicleInsurance: builder.mutation<
@@ -198,6 +206,7 @@ export const onboardingApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["DriverOnboarding"],
     }),
     uploadVehicleRegistration: builder.mutation<
       UploadDriverDocumentResponse,
@@ -208,6 +217,7 @@ export const onboardingApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["DriverOnboarding"],
     }),
     connectStripe: builder.mutation<ConnectStripeResponse, ConnectStripeRequest>({
       query: (body) => ({
@@ -215,6 +225,7 @@ export const onboardingApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["DriverOnboarding"],
     }),
     saveVehicleInfo: builder.mutation<
       SaveVehicleInfoResponse,
@@ -225,6 +236,7 @@ export const onboardingApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
+      invalidatesTags: ["DriverOnboarding"],
     }),
   }),
 });

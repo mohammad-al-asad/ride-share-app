@@ -6,8 +6,8 @@ import { RootState } from "@/redux/store";
 import { Ionicons } from "@expo/vector-icons";
 import { Home01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react-native";
-import { useRouter } from "expo-router";
-import React from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -79,6 +79,13 @@ export default function OnboardingChecklist() {
   const driverName = useAppSelector((state: RootState) => state.auth.user?.name);
   const { data, isLoading, isFetching, error, refetch } =
     useGetDriverOnboardingStatusQuery();
+
+    useFocusEffect(
+      useCallback(() => {
+        refetch();
+      }, [refetch])
+    );
+    
 
   const statusById = React.useMemo(
     () =>

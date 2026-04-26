@@ -179,6 +179,7 @@ export type CreateSupportTicketResponse = {
 };
 
 export const authApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     register: builder.mutation<RegisterResponse, RegisterPayload>({
       query: (body) => ({
@@ -227,7 +228,10 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
-    verifyResetOtp: builder.mutation<VerifyResetOtpResponse, VerifyEmailPayload>({
+    verifyResetOtp: builder.mutation<
+      VerifyResetOtpResponse,
+      VerifyEmailPayload
+    >({
       query: (body) => ({
         url: "auth/verify-reset-otp",
         method: "POST",
@@ -268,7 +272,10 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
-    resetPassword: builder.mutation<ResetPasswordResponse, ResetPasswordPayload>({
+    resetPassword: builder.mutation<
+      ResetPasswordResponse,
+      ResetPasswordPayload
+    >({
       query: (body) => ({
         url: "auth/reset-password",
         method: "POST",
@@ -286,7 +293,10 @@ export const authApi = baseApi.injectEndpoints({
       CreateSupportTicketPayload
     >({
       query: ({ role, ...body }) => ({
-        url: role === "driver" ? "driverHome/support-ticket" : "riderGetRide/support-ticket",
+        url:
+          role === "driver"
+            ? "driverHome/support-ticket"
+            : "riderGetRide/support-ticket",
         method: "POST",
         body,
       }),
