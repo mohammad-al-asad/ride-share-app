@@ -20,7 +20,7 @@ import VerifyRiderModal from "./VerifyRiderModal";
 const PRE_CANCEL_COUNTDOWN_SECONDS = 90; // 1.5 minutes
 const CANCEL_WINDOW_SECONDS = 270; // 4.5 minutes
 const PICKUP_ARRIVAL_RADIUS_METERS = 30;
-const DROPOFF_ARRIVAL_RADIUS_METERS = 35000;
+const DROPOFF_ARRIVAL_RADIUS_METERS = 100;
 
 type CancelTimerPhase = "pre_cancel" | "cancel_window" | "ended";
 

@@ -10,7 +10,7 @@ const RequiredActions = () => {
     (state: RootState) => state.driverRideStart.requiredActionsCount,
   );
   const hasRequiredActions = requiredActionsCount > 0;
-
+  if(!hasRequiredActions) return null;
   return (
     <View style={[styles.alertCard]}>
       <View style={styles.alertIconBg}>
@@ -21,9 +21,7 @@ const RequiredActions = () => {
           Required actions ({requiredActionsCount})
         </Text>
         <Text style={styles.alertSubtitle}>
-          {hasRequiredActions
-            ? "Go online when resolved"
-            : "You're ready to go online"}
+          Go online when resolved
         </Text>
       </View>
     </View>
