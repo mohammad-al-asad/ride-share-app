@@ -13,8 +13,7 @@ export const vehicleInfoSchema = z
       .trim()
       .regex(/^\d{4}$/, "Year is required"),
     type: z.string().trim().min(1, "Type is required"),
-    size: z.string().trim().optional(),
-    tier: z.string().trim().min(1, "Price range is required"),
+    tier: z.string().trim().min(1, "Tier is required"),
     seats: z
       .string()
       .trim()
@@ -24,15 +23,6 @@ export const vehicleInfoSchema = z
         return Number.isInteger(parsed) && parsed > 0;
       }, "Seats must be a positive number"),
     licensePlate: z.string().trim().min(1, "License plate is required"),
-  })
-  .superRefine((data, ctx) => {
-    if (data.type !== "car" && !data.size?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["size"],
-        message: "Size is required",
-      });
-    }
   });
 
 export type StripeAccountFormValues = z.infer<typeof stripeAccountSchema>;

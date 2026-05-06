@@ -18,7 +18,6 @@ type RideOptionItem = {
   id: string;
   type: "ride";
   name: string;
-  sub?: string;
   passengers: number;
   image: any;
   category: "Regular" | "Premium";
@@ -37,51 +36,27 @@ const RIDE_DATA: RideItem[] = [
     passengers: 4,
     image: require("@/assets/images/cars/car.png"),
     category: "Regular",
-    preference: { vehicleType: "car", tier: "regular", size: "normal" },
+    preference: { vehicleType: "car", tier: "regular", seats: 4 },
   },
 
   {
-    id: "suv_compact_regular",
+    id: "suv_4_regular",
     type: "ride",
     name: "SUV",
-    sub: "(Compact)",
+    passengers: 4,
+    image: require("@/assets/images/cars/suv.png"),
+    category: "Regular",
+    preference: { vehicleType: "suv", tier: "regular", seats: 4 },
+  },
+
+  {
+    id: "suv_5_regular",
+    type: "ride",
+    name: "SUV",
     passengers: 5,
     image: require("@/assets/images/cars/suv.png"),
     category: "Regular",
-    preference: { vehicleType: "suv", tier: "regular", size: "compact" },
-  },
-
-  {
-    id: "suv_full_regular",
-    type: "ride",
-    name: "SUV",
-    sub: "(Full)",
-    passengers: 8,
-    image: require("@/assets/images/cars/suv.png"),
-    category: "Regular",
-    preference: { vehicleType: "suv", tier: "regular", size: "full" },
-  },
-
-  {
-    id: "van_compact_regular",
-    type: "ride",
-    name: "Van",
-    sub: "(Compact)",
-    passengers: 8,
-    image: require("@/assets/images/cars/van.png"),
-    category: "Regular",
-    preference: { vehicleType: "van", tier: "regular", size: "compact" },
-  },
-
-  {
-    id: "van_full_regular",
-    type: "ride",
-    name: "Van",
-    sub: "(Full)",
-    passengers: 15,
-    image: require("@/assets/images/cars/van.png"),
-    category: "Regular",
-    preference: { vehicleType: "van", tier: "regular", size: "full" },
+    preference: { vehicleType: "suv", tier: "regular", seats: 5 },
   },
 
   { id: "header2", type: "section", title: "Premium" },
@@ -93,50 +68,67 @@ const RIDE_DATA: RideItem[] = [
     passengers: 4,
     image: require("@/assets/images/cars/car.png"),
     category: "Premium",
-    preference: { vehicleType: "car", tier: "premium", size: "normal" },
+    preference: { vehicleType: "car", tier: "premium", seats: 4 },
   },
 
   {
-    id: "suv_compact_premium",
+    id: "suv_4_premium",
     type: "ride",
     name: "SUV",
-    sub: "(Compact)",
+    passengers: 4,
+    image: require("@/assets/images/cars/suv.png"),
+    category: "Premium",
+    preference: { vehicleType: "suv", tier: "premium", seats: 4 },
+  },
+
+  {
+    id: "suv_5_premium",
+    type: "ride",
+    name: "SUV",
     passengers: 5,
     image: require("@/assets/images/cars/suv.png"),
     category: "Premium",
-    preference: { vehicleType: "suv", tier: "premium", size: "compact" },
-  },
-  {
-    id: "suv_full_premium",
-    type: "ride",
-    name: "SUV",
-    sub: "(Full)",
-    passengers: 8,
-    image: require("@/assets/images/cars/suv.png"),
-    category: "Premium",
-    preference: { vehicleType: "suv", tier: "premium", size: "full" },
+    preference: { vehicleType: "suv", tier: "premium", seats: 5 },
   },
 
   {
-    id: "van_compact_premium",
+    id: "van_6_premium",
     type: "ride",
     name: "Van",
-    sub: "(Compact)",
-    passengers: 8,
+    passengers: 6,
     image: require("@/assets/images/cars/van.png"),
     category: "Premium",
-    preference: { vehicleType: "van", tier: "premium", size: "compact" },
+    preference: { vehicleType: "van", tier: "premium", seats: 6 },
   },
 
   {
-    id: "van_full_premium",
+    id: "van_8_premium",
     type: "ride",
     name: "Van",
-    sub: "(Full)",
-    passengers: 15,
+    passengers: 8,
     image: require("@/assets/images/cars/van.png"),
     category: "Premium",
-    preference: { vehicleType: "van", tier: "premium", size: "full" },
+    preference: { vehicleType: "van", tier: "premium", seats: 8 },
+  },
+
+  {
+    id: "van_10_premium",
+    type: "ride",
+    name: "Van",
+    passengers: 10,
+    image: require("@/assets/images/cars/van.png"),
+    category: "Premium",
+    preference: { vehicleType: "van", tier: "premium", seats: 10 },
+  },
+
+  {
+    id: "van_12_premium",
+    type: "ride",
+    name: "Van",
+    passengers: 12,
+    image: require("@/assets/images/cars/van.png"),
+    category: "Premium",
+    preference: { vehicleType: "van", tier: "premium", seats: 12 },
   },
 ];
 
@@ -165,7 +157,6 @@ const SelectedRideCard = ({
           <Text style={styles.selectedCategoryText}>{item.category}</Text>
           <View style={styles.rowAlignCenter}>
             <Text style={styles.selectedRideName}>{item.name} </Text>
-            {item.sub && <Text style={styles.selectedRideSub}>{item.sub}</Text>}
             <View style={[styles.rowAlignCenter, { marginLeft: scale(8) }]}>
               <Ionicons name="people" size={14} color="#666" />
               <Text style={styles.passengerText}> {item.passengers}</Text>
@@ -203,7 +194,6 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
           <View>
             <View style={styles.rowAlignCenter}>
               <Text style={styles.rideName}>{item.name} </Text>
-              {item.sub && <Text style={styles.rideSub}>{item.sub}</Text>}
             </View>
             <View style={styles.rowAlignCenter}>
               <Ionicons name="people" size={14} color="#666" />
@@ -225,9 +215,7 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
           <SelectedRideCard item={selected} onClear={() => setSelected(null)} />
           <CustomButton
             style={{ marginTop: verticalScale(10) }}
-            text={`Choose ${selected.category} ${selected.name} ${
-              selected?.sub ? selected.sub : ""
-            }`}
+            text={`Choose ${selected.category} ${selected.name}`}
             onClick={() => {
               if (selected.preference) {
                 dispatch(setRidePreference(selected.preference));
@@ -252,7 +240,7 @@ const CarSelection = ({ setIspayment }: { setIspayment: any }) => {
                 marginTop: verticalScale(10),
                 marginBottom: verticalScale(20),
               }}
-              text={`Select ${focused ? focused.name + " " + (focused?.sub ? focused.sub : "") : ""}`}
+              text={`Select ${focused ? focused.name : ""}`}
               onClick={() => {
                 if (focused) setSelected(focused);
               }}
@@ -303,7 +291,6 @@ const styles = StyleSheet.create({
   rideInfoLeft: { flexDirection: "row", alignItems: "center", gap: scale(15) },
   carImage: { width: scale(60), height: scale(40) },
   rideName: { fontSize: moderateScale(14), fontWeight: "700" },
-  rideSub: { fontSize: moderateScale(12), color: "#666" },
   passengerText: { fontSize: moderateScale(12), color: "#666" },
   rowAlignCenter: { flexDirection: "row", alignItems: "center" },
 
@@ -345,10 +332,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontWeight: "700",
     color: "#333",
-  },
-  selectedRideSub: {
-    fontSize: moderateScale(14),
-    color: "#888",
   },
   list: {
     flex: 1,

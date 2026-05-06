@@ -72,7 +72,7 @@ type NearbyDriver = {
     brand: string;
     model: string;
     type: string;
-    size: string;
+    seats: number;
     licensePlate: string;
   };
 };
@@ -112,7 +112,7 @@ type RiderTripVehicleProfile = {
   brand?: string;
   model?: string;
   type?: string;
-  size?: string;
+  seats?: number;
   licensePlate?: string | null;
 };
 
@@ -296,7 +296,7 @@ export type RiderTripHistoryVehicle = {
   brand: string;
   model: string;
   type: string;
-  size: string;
+  seats: number;
   licensePlate: string;
 };
 
@@ -339,7 +339,7 @@ export type RiderTripHistoryItem = {
   rideOption?: {
     vehicleType?: string;
     tier?: string;
-    size?: string;
+    seats?: number;
   };
   cancellation?: {
     canceledBy?: string;

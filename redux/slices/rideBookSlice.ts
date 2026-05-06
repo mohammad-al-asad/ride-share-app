@@ -4,7 +4,6 @@ import { rideBookApi } from "../api/rideBookApi";
 export type RideScheduleKind = "now" | "later";
 export type RideVehicleType = "car" | "suv" | "van";
 export type RideTier = "regular" | "premium";
-export type RideSize = "normal" | "compact" | "full";
 
 export type RideLocation = {
   address: string;
@@ -20,7 +19,7 @@ export type RideSchedule = {
 export type RidePreference = {
   vehicleType: RideVehicleType;
   tier: RideTier;
-  size: RideSize;
+  seats: number;
 };
 
 export type RidePayment = {
@@ -128,7 +127,7 @@ export type RiderTripRealtime = {
   rideOption?: {
     vehicleType?: string;
     tier?: string;
-    size?: string;
+    seats?: number;
   };
 };
 
@@ -162,7 +161,7 @@ export type RideMatchedPayload = {
     brand?: string;
     model?: string;
     type?: string;
-    size?: string;
+    seats?: number;
     licensePlate?: string | null;
   } | null;
   fare?: {

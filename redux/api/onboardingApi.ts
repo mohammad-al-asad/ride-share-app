@@ -73,11 +73,9 @@ type VehicleInfo = {
   model: string;
   year: number;
   type: string;
-  priceRange: number;
-  size: string;
   seats: number;
   licensePlate: string;
-  tier?: string;
+  tier: string;
   isActive?: boolean;
   approved?: boolean;
   driverId?: string;
@@ -98,8 +96,7 @@ type SaveVehicleInfoRequest = {
   model: string;
   year: number;
   type: string;
-  priceRange: number;
-  size: string;
+  tier: string;
   seats: number;
   licensePlate: string;
 };

@@ -39,174 +39,17 @@ type ModelOption = {
   modelId: number;
 };
 
-type VehiclePriceOption = {
-  label: string;
-  value: "regular" | "premium";
-  priceRange: number;
-  minPrice: number;
-  maxPrice: number | null;
-};
-
 const VEHICLE_TYPES = [
   { label: "Car", value: "car" },
   { label: "SUV", value: "suv" },
   { label: "Van", value: "van" },
 ];
 
-const VEHICLE_SIZES = [
-  { label: "Normal", value: "normal" },
-  { label: "Compact/Midsize", value: "compact" },
-  { label: "Full Size", value: "full" },
+
+const VEHICLE_TIERS = [
+  { label: "Regular", value: "regular" },
+  { label: "Premium", value: "premium" },
 ];
-
-const VEHICLE_PRICE_RANGES: Record<string, VehiclePriceOption[]> = {
-  car: [
-    {
-      label: "24k-32k",
-      value: "regular",
-      priceRange: 24000,
-      minPrice: 24000,
-      maxPrice: 32000,
-    },
-    {
-      label: "35k-50k+",
-      value: "premium",
-      priceRange: 35000,
-      minPrice: 35000,
-      maxPrice: 50000,
-    },
-  ],
-  suvnormal: [
-    {
-      label: "28k-38k",
-      value: "regular",
-      priceRange: 28000,
-      minPrice: 28000,
-      maxPrice: 38000,
-    },
-    {
-      label: "40k-60k+",
-      value: "premium",
-      priceRange: 40000,
-      minPrice: 40000,
-      maxPrice: 60000,
-    },
-  ],
-  suvcompact: [
-    {
-      label: "30k-45k",
-      value: "regular",
-      priceRange: 30000,
-      minPrice: 30000,
-      maxPrice: 45000,
-    },
-    {
-      label: "50k-75k+",
-      value: "premium",
-      priceRange: 50000,
-      minPrice: 50000,
-      maxPrice: 75000,
-    },
-  ],
-  suvfull: [
-    {
-      label: "45k-60k",
-      value: "regular",
-      priceRange: 45000,
-      minPrice: 45000,
-      maxPrice: 60000,
-    },
-    {
-      label: "70k-100k+",
-      value: "premium",
-      priceRange: 70000,
-      minPrice: 70000,
-      maxPrice: 100000,
-    },
-  ],
-  vannormal: [
-    {
-      label: "30k-40k",
-      value: "regular",
-      priceRange: 30000,
-      minPrice: 30000,
-      maxPrice: 40000,
-    },
-    {
-      label: "45k-65k+",
-      value: "premium",
-      priceRange: 45000,
-      minPrice: 45000,
-      maxPrice: 65000,
-    },
-  ],
-  vancompact: [
-    {
-      label: "32k-45k",
-      value: "regular",
-      priceRange: 32000,
-      minPrice: 32000,
-      maxPrice: 45000,
-    },
-    {
-      label: "50k-70k+",
-      value: "premium",
-      priceRange: 50000,
-      minPrice: 50000,
-      maxPrice: 70000,
-    },
-  ],
-  vanfull: [
-    {
-      label: "40k-55k",
-      value: "regular",
-      priceRange: 40000,
-      minPrice: 40000,
-      maxPrice: 55000,
-    },
-    {
-      label: "60k-85k+",
-      value: "premium",
-      priceRange: 60000,
-      minPrice: 60000,
-      maxPrice: 85000,
-    },
-  ],
-};
-
-function getPriceOptions(type?: string, size?: string) {
-  if (!type) return [];
-  if (type === "car") return VEHICLE_PRICE_RANGES.car;
-  if (!size) return [];
-
-  return VEHICLE_PRICE_RANGES[`${type}${size}`] ?? [];
-}
-
-function getMatchingPriceOption(
-  type?: string,
-  size?: string,
-  priceRange?: number,
-  tier?: string,
-) {
-  const options = getPriceOptions(type, size);
-
-  if (tier) {
-    const tierMatch = options.find((option) => option.value === tier);
-    if (tierMatch) return tierMatch;
-  }
-
-  if (priceRange == null) return null;
-
-  return (
-    options.find((option) => {
-      const inRange =
-        priceRange >= option.minPrice &&
-        (option.maxPrice == null || priceRange <= option.maxPrice);
-
-      return option.priceRange === priceRange || inRange;
-    }) ?? null
-  );
-}
 
 export default function VehicleInfoScreen() {
   const router = useRouter();
@@ -248,7 +91,6 @@ export default function VehicleInfoScreen() {
       model: "",
       year: "",
       type: "",
-      size: "",
       tier: "",
       seats: "",
       licensePlate: "",
@@ -257,29 +99,25 @@ export default function VehicleInfoScreen() {
 
   const selectedBrand = watch("brand");
   const selectedType = watch("type");
-  const selectedSize = watch("size");
 
   const years = useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return Array.from({ length: 12 }, (_, index) => {
+    const startYear = 2010;
+    const length = currentYear - startYear + 1;
+    return Array.from({ length }, (_, index) => {
       const year = (currentYear - index).toString();
       return { label: year, value: year };
     });
   }, []);
 
-  const priceOptions = useMemo(
-    () => getPriceOptions(selectedType, selectedSize),
-    [selectedSize, selectedType],
-  );
+  const showTier = !!selectedType;
 
-  const priceDisabled =
-    !selectedType || (selectedType !== "car" && !selectedSize);
-
-  const pricePlaceholder = useMemo(() => {
-    if (!selectedType) return "Select Type first";
-    if (selectedType !== "car" && !selectedSize) return "Select Size first";
-    return "Select Price Range";
-  }, [selectedSize, selectedType]);
+  const tierOptions = useMemo(() => {
+    if (selectedType === "van") {
+      return VEHICLE_TIERS.filter((t) => t.value === "premium");
+    }
+    return VEHICLE_TIERS;
+  }, [selectedType]);
 
   useEffect(() => {
     const fetchMakes = async () => {
@@ -356,49 +194,24 @@ export default function VehicleInfoScreen() {
     const existingVehicle = vehicleInfo?.data?.vehicle;
     if (!existingVehicle) return;
 
-    const normalizedSize =
-      existingVehicle.type === "car"
-        ? existingVehicle.size || "normal"
-        : existingVehicle.size || "";
-    const matchedPriceOption = getMatchingPriceOption(
-      existingVehicle.type,
-      normalizedSize,
-      existingVehicle.priceRange,
-      existingVehicle.tier,
-    );
-
     reset({
       brand: existingVehicle.brand ?? "",
       model: existingVehicle.model ?? "",
       year: existingVehicle.year ? String(existingVehicle.year) : "",
       type: existingVehicle.type ?? "",
-      size: normalizedSize,
-      tier: matchedPriceOption?.value ?? "",
+      tier: existingVehicle.tier ?? "",
       seats: existingVehicle.seats ? String(existingVehicle.seats) : "",
       licensePlate: existingVehicle.licensePlate ?? "",
     });
   }, [reset, vehicleInfo]);
 
   const onSave = handleSubmit(async (values) => {
-    const selectedPriceOption =
-      priceOptions.find((option) => option.value === values.tier) ?? null;
-
-    if (!selectedPriceOption) {
-      Alert.alert("Missing price range", "Please select a valid price range.");
-      return;
-    }
-
-    const normalizedSize =
-      values.type === "car"
-        ? values.size?.trim() || "normal"
-        : values.size?.trim();
     const payload = {
       brand: values.brand.trim(),
       model: values.model.trim(),
       year: Number(values.year),
       type: values.type.trim(),
-      priceRange: selectedPriceOption.priceRange,
-      size: normalizedSize,
+      tier: values.tier,
       seats: Number(values.seats),
       licensePlate: values.licensePlate.trim(),
     };
@@ -408,10 +221,7 @@ export default function VehicleInfoScreen() {
       const message =
         response?.data?.message ?? "Vehicle information saved successfully.";
 
-      reset({
-        ...values,
-        size: normalizedSize,
-      });
+      reset(values);
       refetchVehicleInfo();
       Alert.alert("Success", message, [
         {
@@ -577,22 +387,17 @@ export default function VehicleInfoScreen() {
                 )}
                 onChange={(item: { value: string }) => {
                   onChange(item.value);
-                  setValue("tier", "", {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  if (item.value === "car") {
-                    setValue("size", "normal", {
+                  if (item.value === "van") {
+                    setValue("tier", "premium", {
                       shouldDirty: true,
                       shouldValidate: true,
                     });
-                    return;
+                  } else {
+                    setValue("tier", "", {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
                   }
-
-                  setValue("size", "", {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
                 }}
               />
             )}
@@ -602,72 +407,39 @@ export default function VehicleInfoScreen() {
           ) : null}
         </View>
 
-        {selectedType && selectedType !== "car" ? (
+
+
+        {showTier ? (
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Size</Text>
+            <Text style={styles.inputLabel}>Tier</Text>
             <Controller
               control={control}
-              name="size"
+              name="tier"
               render={({ field: { onChange, value } }) => (
                 <Dropdown
-                  style={[styles.dropdown, errors.size && styles.inputError]}
-                  data={VEHICLE_SIZES}
+                  style={[
+                    styles.dropdown,
+                    errors.tier && styles.inputError,
+                  ]}
+                  data={tierOptions}
                   labelField="label"
                   valueField="value"
                   value={value}
-                  placeholder="Select Size"
+                  placeholder="Select Tier"
                   selectedTextStyle={styles.selectedTextStyle}
                   placeholderStyle={styles.placeholderStyle}
                   renderRightIcon={() => (
                     <Ionicons name="chevron-down" size={20} color="#6B7280" />
                   )}
-                  onChange={(item: { value: string }) => {
-                    onChange(item.value);
-                    setValue("tier", "", {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                  }}
+                  onChange={(item: { value: string }) => onChange(item.value)}
                 />
               )}
             />
-            {errors.size ? (
-              <Text style={styles.errorText}>{errors.size.message}</Text>
+            {errors.tier ? (
+              <Text style={styles.errorText}>{errors.tier.message}</Text>
             ) : null}
           </View>
         ) : null}
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Price Range</Text>
-          <Controller
-            control={control}
-            name="tier"
-            render={({ field: { onChange, value } }) => (
-              <Dropdown
-                style={[
-                  styles.dropdown,
-                  priceDisabled && styles.dropdownDisabled,
-                  errors.tier && styles.inputError,
-                ]}
-                data={priceOptions}
-                labelField="label"
-                valueField="value"
-                value={value}
-                disable={priceDisabled}
-                placeholder={pricePlaceholder}
-                selectedTextStyle={styles.selectedTextStyle}
-                placeholderStyle={styles.placeholderStyle}
-                renderRightIcon={() => (
-                  <Ionicons name="chevron-down" size={20} color="#6B7280" />
-                )}
-                onChange={(item: VehiclePriceOption) => onChange(item.value)}
-              />
-            )}
-          />
-          {errors.tier ? (
-            <Text style={styles.errorText}>{errors.tier.message}</Text>
-          ) : null}
-        </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Seats</Text>
