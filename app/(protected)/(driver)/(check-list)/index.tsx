@@ -126,9 +126,14 @@ export default function OnboardingChecklist() {
           <Text style={styles.subText}>
             Please make sure to fill up all the data
           </Text>
-          {isFetching && !isLoading && (
-            <Text style={styles.refreshText}>Refreshing status...</Text>
-          )}
+          <Text
+            style={[
+              styles.refreshText,
+              !isFetching || isLoading ? styles.hiddenRefreshText : null,
+            ]}
+          >
+            Refreshing status...
+          </Text>
         </View>
 
         <View style={styles.cardContainer}>
@@ -212,6 +217,9 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(8),
     fontSize: moderateScale(12),
     color: colors.main,
+  },
+  hiddenRefreshText: {
+    opacity: 0,
   },
   cardContainer: {
     backgroundColor: "#FFFFFF",

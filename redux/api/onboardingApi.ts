@@ -50,11 +50,27 @@ type StripeInfoResponse = {
   data: {
     stripeAccountId?: string | null;
     stripeConnected?: boolean;
+    chargesEnabled?: boolean;
+    payoutsEnabled?: boolean;
+    detailsSubmitted?: boolean;
+    requirementsDue?: string[];
+    defaultPayoutMethod?: {
+      type?: "bank_account" | "card" | string;
+      last4?: string | null;
+      bankName?: string | null;
+      brand?: string | null;
+      currency?: string | null;
+      country?: string | null;
+    } | null;
   };
 };
 
 type ConnectStripeRequest = {
   stripeAccountId: string;
+};
+
+type CreateStripeOnboardingLinkRequest = {
+  returnUrl: string;
 };
 
 type ConnectStripeResponse = {
@@ -64,6 +80,17 @@ type ConnectStripeResponse = {
     message?: string;
     stripeAccountId?: string;
     stripeConnected?: boolean;
+  };
+};
+
+type CreateStripeOnboardingLinkResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    url: string;
+    mode?: "onboarding" | "dashboard";
+    returnUrl?: string;
+    stripeAccountId?: string;
   };
 };
 
@@ -224,6 +251,17 @@ export const onboardingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["DriverOnboarding"],
     }),
+    createStripeOnboardingLink: builder.mutation<
+      CreateStripeOnboardingLinkResponse,
+      CreateStripeOnboardingLinkRequest
+    >({
+      query: (body) => ({
+        url: "driverOnboarding/stripe/onboarding-link",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["DriverOnboarding"],
+    }),
     saveVehicleInfo: builder.mutation<
       SaveVehicleInfoResponse,
       SaveVehicleInfoRequest
@@ -250,5 +288,6 @@ export const {
   useUploadVehicleInsuranceMutation,
   useUploadVehicleRegistrationMutation,
   useConnectStripeMutation,
+  useCreateStripeOnboardingLinkMutation,
   useSaveVehicleInfoMutation,
 } = onboardingApi;
