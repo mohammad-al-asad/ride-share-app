@@ -12,12 +12,15 @@ import { useFocusEffect, useRouter } from "expo-router";
 import React from "react";
 import {
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
-import { InAppBrowser } from "react-native-inappbrowser-reborn";
+import { ActivityIndicator } from "react-native-paper";
+import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 
@@ -31,6 +34,8 @@ const Payment = () => {
   } = useGetStripeInfoQuery();
   const [createStripeOnboardingLink, { isLoading: isSaving }] =
     useCreateStripeOnboardingLinkMutation();
+  const [stripeUrl, setStripeUrl] = React.useState<string | null>(null);
+  const [isWebViewLoading, setIsWebViewLoading] = React.useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -67,36 +72,7 @@ const Payment = () => {
         return;
       }
 
-      if (await InAppBrowser.isAvailable()) {
-        const browserOptions = {
-          dismissButtonStyle: "close",
-          preferredBarTintColor: "#FFFFFF",
-          preferredControlTintColor: colors.main,
-          ephemeralWebSession: false,
-          showTitle: false,
-          toolbarColor: colors.main,
-          secondaryToolbarColor: colors.main,
-          navigationBarColor: colors.main,
-          navigationBarDividerColor: colors.main,
-          enableUrlBarHiding: true,
-          enableDefaultShare: false,
-          forceCloseOnRedirection: true,
-        } as const;
-
-        if (linkMode === "dashboard") {
-          await InAppBrowser.open(onboardingUrl, browserOptions);
-        } else {
-          await InAppBrowser.openAuth(
-            onboardingUrl,
-            browserReturnUrl,
-            browserOptions,
-          );
-        }
-      } else {
-        await Linking.openURL(onboardingUrl);
-      }
-
-      refetchStripeInfo();
+      setStripeUrl(onboardingUrl);
     } catch (err: any) {
       const message =
         err?.data?.error?.message ??
@@ -110,6 +86,18 @@ const Payment = () => {
 
   const handleDone = () => {
     router.back();
+  };
+
+  const handleWebViewNavigationStateChange = (newNavState: any) => {
+    const { url } = newNavState;
+    if (!url) return;
+
+    // Detect if we've been redirected back to the app's return URL
+    // Stripe onboarding links usually contain the return URL when finished
+    if (url.includes("payment") || url.includes("onboarding-complete")) {
+      setStripeUrl(null);
+      refetchStripeInfo();
+    }
   };
 
   return (
@@ -222,6 +210,46 @@ const Payment = () => {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={!!stripeUrl}
+        animationType="slide"
+        onRequestClose={() => setStripeUrl(null)}
+      >
+        <SafeAreaView style={styles.webViewContainer}>
+          <View style={styles.webViewHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setStripeUrl(null);
+                refetchStripeInfo();
+              }}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={scale(24)} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.webViewTitle}>Stripe Secure Setup</Text>
+            <View style={{ width: scale(24) }} />
+          </View>
+
+          <View style={styles.webViewWrapper}>
+            <WebView
+              source={{ uri: stripeUrl || "" }}
+              onNavigationStateChange={handleWebViewNavigationStateChange}
+              onLoadStart={() => setIsWebViewLoading(true)}
+              onLoadEnd={() => setIsWebViewLoading(false)}
+              startInLoadingState={true}
+              renderLoading={() => (
+                <View style={styles.webViewLoader}>
+                  <ActivityIndicator size="large" color={colors.main} />
+                </View>
+              )}
+              // Stripe sometimes needs specific UA or features
+              domStorageEnabled={true}
+              javaScriptEnabled={true}
+            />
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -386,5 +414,39 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     fontWeight: "900",
     textTransform: "lowercase",
+  },
+  webViewContainer: {
+    flex: 1,
+    backgroundColor: colors.main,
+  },
+  webViewHeader: {
+    height: verticalScale(50),
+    backgroundColor: colors.main,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: scale(16),
+  },
+  webViewTitle: {
+    color: "#FFFFFF",
+    fontSize: moderateScale(16),
+    fontWeight: "700",
+  },
+  closeButton: {
+    padding: scale(4),
+  },
+  webViewWrapper: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  webViewLoader: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
   },
 });
