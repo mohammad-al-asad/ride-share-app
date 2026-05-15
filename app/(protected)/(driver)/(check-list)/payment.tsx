@@ -216,9 +216,9 @@ const Payment = () => {
         animationType="slide"
         onRequestClose={() => setStripeUrl(null)}
       >
-        <SafeAreaView style={styles.webViewContainer}>
-
-          <View style={styles.webViewWrapper}>
+        <View style={{ flex: 1, backgroundColor: "#566cfc" }}>
+          <View style={styles.webViewContainer}>
+            <View style={styles.webViewWrapper}>
             <WebView
               source={{ uri: stripeUrl || "" }}
               onNavigationStateChange={handleWebViewNavigationStateChange}
@@ -235,7 +235,8 @@ const Payment = () => {
               javaScriptEnabled={true}
             />
           </View>
-        </SafeAreaView>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -403,13 +404,12 @@ const styles = StyleSheet.create({
     textTransform: "lowercase",
   },
   webViewContainer: {
+    paddingTop:40,
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#6772e5",
   },
-
   webViewWrapper: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   webViewLoader: {
     position: "absolute",

@@ -13,7 +13,7 @@ SplashScreen.preventAutoHideAsync();
 function StripeWrapper({ children }: { children: React.ReactNode }) {
   const user = useAppSelector((state) => state.auth.user);
   const stripeKey =
-    user?.email === "maasad11914@gmail.com"
+    user?.email === "maasad11914@gmail.com" || user?.email === "blackboys11914@gmail.com"
       ? process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST
       : process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_PROD;
 
