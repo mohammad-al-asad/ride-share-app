@@ -189,7 +189,7 @@ const Payment = () => {
           <View style={styles.actions}>
             <CustomButton
               type="main"
-              text={isConnected ? "Update payout method" : "Set up bank or card payout"}
+              text={isConnected ? "Manage Payouts & Balance" : "Set up bank or card payout"}
               onClick={openPayoutOnboarding}
               isDisable={isSaving}
               isLoading={isSaving}
@@ -217,19 +217,6 @@ const Payment = () => {
         onRequestClose={() => setStripeUrl(null)}
       >
         <SafeAreaView style={styles.webViewContainer}>
-          <View style={styles.webViewHeader}>
-            <TouchableOpacity
-              onPress={() => {
-                setStripeUrl(null);
-                refetchStripeInfo();
-              }}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={scale(24)} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.webViewTitle}>Stripe Secure Setup</Text>
-            <View style={{ width: scale(24) }} />
-          </View>
 
           <View style={styles.webViewWrapper}>
             <WebView
@@ -417,24 +404,9 @@ const styles = StyleSheet.create({
   },
   webViewContainer: {
     flex: 1,
-    backgroundColor: colors.main,
+    backgroundColor: "#FFFFFF",
   },
-  webViewHeader: {
-    height: verticalScale(50),
-    backgroundColor: colors.main,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: scale(16),
-  },
-  webViewTitle: {
-    color: "#FFFFFF",
-    fontSize: moderateScale(16),
-    fontWeight: "700",
-  },
-  closeButton: {
-    padding: scale(4),
-  },
+
   webViewWrapper: {
     flex: 1,
     backgroundColor: "#FFFFFF",

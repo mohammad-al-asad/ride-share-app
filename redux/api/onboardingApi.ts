@@ -201,26 +201,28 @@ export const onboardingApi = baseApi.injectEndpoints({
       }),
       providesTags: ["DriverOnboarding"],
     }),
-    uploadDriverLicenseFront: builder.mutation<UploadDriverDocumentResponse, FormData>(
-      {
-        query: (body) => ({
-          url: "driverOnboarding/license-front",
-          method: "POST",
-          body,
-        }),
-        invalidatesTags: ["DriverOnboarding"],
-      },
-    ),
-    uploadDriverLicenseBack: builder.mutation<UploadDriverDocumentResponse, FormData>(
-      {
-        query: (body) => ({
-          url: "driverOnboarding/license-back",
-          method: "POST",
-          body,
-        }),
-        invalidatesTags: ["DriverOnboarding"],
-      },
-    ),
+    uploadDriverLicenseFront: builder.mutation<
+      UploadDriverDocumentResponse,
+      FormData
+    >({
+      query: (body) => ({
+        url: "driverOnboarding/license-front",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["DriverOnboarding"],
+    }),
+    uploadDriverLicenseBack: builder.mutation<
+      UploadDriverDocumentResponse,
+      FormData
+    >({
+      query: (body) => ({
+        url: "driverOnboarding/license-back",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["DriverOnboarding"],
+    }),
     uploadVehicleInsurance: builder.mutation<
       UploadDriverDocumentResponse,
       FormData
@@ -243,7 +245,10 @@ export const onboardingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["DriverOnboarding"],
     }),
-    connectStripe: builder.mutation<ConnectStripeResponse, ConnectStripeRequest>({
+    connectStripe: builder.mutation<
+      ConnectStripeResponse,
+      ConnectStripeRequest
+    >({
       query: (body) => ({
         url: "driverOnboarding/connect-stripe",
         method: "POST",

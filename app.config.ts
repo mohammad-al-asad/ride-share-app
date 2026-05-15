@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "MA3",
     slug: "ma3",
-    version: "1.0.1",
+    version: "1.0.2",
     orientation: "portrait",
     icon: "./assets/icons/App-icon.png",
     scheme: "ridingapp",
